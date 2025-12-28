@@ -1,11 +1,14 @@
 # ===========================================
 # Render.com Deployment Configuration
 # ===========================================
-# This configuration deploys the Flask Grade Tracker
-# with PostgreSQL and Redis on Render.com
+# This configuration deploys the Flask Grade Tracker on Render.com
 # 
 # Usage: Push this file to your repo root and Render will auto-detect it
 # See: https://render.com/docs/infrastructure-as-code
+#
+# NOTE: PostgreSQL and Redis services must be created manually in the Render Dashboard
+#       This file defines the web service only
+#       The database and cache services can be added via Dashboard
 
 services:
   # ===========================================
@@ -13,7 +16,7 @@ services:
   # ===========================================
   - type: web
     name: gradetracker
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerContext: ./
     
@@ -25,148 +28,172 @@ services:
       targetMemoryPercent: 70
       targetCPUPercent: 80
     
-    # Environment variables (reference them in Render dashboard)
+    # Environment variables
     envVars:
       - key: FLASK_ENV
         value: production
       - key: FLASK_APP
         value: app.py
-      - key: PORT
-        value: 5000
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: PYTHONDONTWRITEBYTECODE
         value: "1"
       - key: LOG_LEVEL
         value: INFO
-      
-      # Database configuration - uses Render's managed PostgreSQL
-      - key: DATABASE_URL
-        fromDatabase:
-          name: gradetracker-db
-          property: connectionString
-      
-      # Redis configuration - uses Render's managed Redis
-      - key: REDIS_URL
-        fromService:
-          name: gradetracker-redis
-          type: pserv
-          property: connectionString
-      
-      # This should be set in Render dashboard for security
-      - key: FLASK_SECRET_KEY
-        sync: false  # Must be set manually in Render dashboard
-      
       - key: USE_HTTPS
         value: "true"
-      
       - key: SESSION_COOKIE_SECURE
         value: "true"
     
-    # Secrets (set in Render dashboard)
-    secrets:
-      - key: API_TOKEN_ENCRYPTION_KEY
-      - key: FLASK_SECRET_KEY
-      - key: MAIL_USERNAME
-      - key: MAIL_PASSWORD
-    
-    # Health check
+    # Health check endpoint
     healthCheckPath: /health
     
-    # Build command - cache requirements layer
-    buildCommand: pip install -r requirements.txt
-    
-    # Start command
+    # Start command - gunicorn with gevent workers
     startCommand: >
       gunicorn
-      --bind 0.0.0.0:$PORT
+      --bind 0.0.0.0:5000
       --workers 3
       --worker-class gevent
       --timeout 120
       --access-logfile -
       --error-logfile -
       app:app
-    
-    # Disk configuration for logs
-    disks:
-      - name: logs
-        mountPath: /app/logs
-        sizeGB: 1
-
-  # ===========================================
-  # POSTGRESQL DATABASE
-  # ===========================================
-  - type: pserv
-    name: gradetracker-db
-    env: docker
-    plan: starter
-    ipAllowList: [] # Allow all Render services
-    
-    dockerImage: postgres:15-alpine
-    
-    envVars:
-      - key: POSTGRES_DB
-        value: gradetracker
-      - key: POSTGRES_USER
-        value: gradetracker_user
-      
-      # Password should be set in Render dashboard
-      - key: POSTGRES_PASSWORD
-        sync: false
-    
-    secrets:
-      - key: POSTGRES_PASSWORD
-    
-    # Disk configuration
-    disks:
-      - name: db_data
-        mountPath: /var/lib/postgresql/data
-        sizeGB: 10
-
-  # ===========================================
-  # REDIS CACHE & SESSION STORE
-  # ===========================================
-  - type: pserv
-    name: gradetracker-redis
-    env: docker
-    plan: starter
-    
-    dockerImage: redis:7-alpine
-    
-    # Redis command with persistence and memory limits
-    dockerCommand: >
-      redis-server
-      --appendonly yes
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
-      --timeout 0
-      --tcp-keepalive 300
-    
-    # Disk configuration
-    disks:
-      - name: redis_data
-        mountPath: /data
-        sizeGB: 1
 
 # ===========================================
-# DEPLOYMENT NOTES
+# SETUP INSTRUCTIONS
 # ===========================================
-# 
-# 1. PostgreSQL is used instead of MySQL for better Render.com compatibility
-#    - Change DATABASE_URL connection string in app if needed
-#    - Or install PyMySQL and use MySQL connection string
 #
-# 2. All sensitive data (passwords, keys, tokens) should be set as 
-#    environment variables in the Render.com dashboard, not in this file
+# STEP 1: Create PostgreSQL Database
+# ───────────────────────────────────
+# 1. Go to https://dashboard.render.com
+# 2. Click "New" → "PostgreSQL"
+# 3. Name: gradetracker-db
+# 4. Database: gradetracker
+# 5. User: gradetracker_user
+# 6. Region: US East (or your preferred region)
+# 7. Click "Create Database"
+# 8. Copy the External Database URL
 #
-# 3. The PostgreSQL and Redis services will be auto-created with managed backups
+# STEP 2: Create Redis Cache
+# ──────────────────────────
+# 1. Click "New" → "Redis"
+# 2. Name: gradetracker-redis
+# 3. Region: US East (same as DB)
+# 4. Eviction Policy: allkeys-lru
+# 5. Click "Create Redis"
+# 6. Copy the Redis URL
 #
-# 4. Render auto-deploys on git push to your linked branch
+# STEP 3: Create Web Service
+# ──────────────────────────
+# 1. Click "New" → "Web Service"
+# 2. Connect your GitHub repository
+# 3. Select branch: main
+# 4. Name: gradetracker
+# 5. Runtime: Docker (auto-detected)
+# 6. Render will find this render.yaml file
+# 7. Click "Create Web Service"
 #
-# 5. Logs are available in Render dashboard and persisted to /app/logs disk
+# STEP 4: Set Environment Variables
+# ──────────────────────────────────
+# Go to your service settings and add:
 #
-# 6. For SSL/HTTPS: Render provides free auto-renewing SSL certificates
-#    Set USE_HTTPS=true and SESSION_COOKIE_SECURE=true
+# REQUIRED (set as Secrets for security):
+#   - FLASK_SECRET_KEY: Generate with:
+#     python -c "import secrets; print(secrets.token_hex(32))"
+#   - API_TOKEN_ENCRYPTION_KEY: Your existing key
+#   - DATABASE_URL: Paste the PostgreSQL External URL from Step 1
+#   - REDIS_URL: Paste the Redis URL from Step 2
 #
-# 7. To scale up: Change plan from "starter" to "standard" or "pro"
-#    Each plan includes more resources and better uptime SLA
+# OPTIONAL:
+#   - MAIL_USERNAME: Your email address
+#   - MAIL_PASSWORD: Your email password
+#
+# STEP 5: Deploy
+# ──────────────
+# Click "Deploy" or wait for auto-deploy after pushing to GitHub
+# Render will build the Docker image and start your service
+#
+# ===========================================
+# ENVIRONMENT VARIABLES REFERENCE
+# ===========================================
+#
+# DATABASE_URL
+#   Description: PostgreSQL database connection string
+#   Format: postgresql://user:password@host:5432/database
+#   Source: Copy from PostgreSQL service details
+#
+# REDIS_URL
+#   Description: Redis cache connection string
+#   Format: redis://:password@host:port
+#   Source: Copy from Redis service details
+#
+# FLASK_SECRET_KEY
+#   Description: Secret key for Flask session signing
+#   Value: Must be random, generate with Python
+#   Importance: CRITICAL - use strong random value
+#
+# API_TOKEN_ENCRYPTION_KEY
+#   Description: Key for encrypting Canvas API tokens
+#   Value: Your existing encryption key
+#   Importance: CRITICAL - don't lose this!
+#
+# MAIL_USERNAME / MAIL_PASSWORD
+#   Description: Email credentials for sending notifications
+#   Optional: Only needed if using email features
+#
+# ===========================================
+# TROUBLESHOOTING
+# ===========================================
+#
+# "Health check failing"
+#   - Ensure /health endpoint exists in Flask app
+#   - Check DATABASE_URL and REDIS_URL are set correctly
+#   - Review logs in Render Dashboard
+#
+# "Database connection refused"
+#   - Verify DATABASE_URL is correctly set
+#   - Wait for PostgreSQL service to fully initialize (2-3 minutes)
+#   - Check that database service is running
+#
+# "Redis connection refused"
+#   - Verify REDIS_URL is correctly set
+#   - Wait for Redis service to fully initialize
+#   - Check that Redis service is running
+#
+# "Application crashes on startup"
+#   - Check FLASK_SECRET_KEY is set (not empty)
+#   - Verify all required environment variables are set
+#   - Review application logs in Render Dashboard
+#
+# ===========================================
+# COSTS
+# ===========================================
+#
+# Web Service (Standard):    $12/month
+# PostgreSQL (Starter):      $7/month
+# Redis (Starter):           $6/month
+# ────────────────────────────────────
+# Total:                     ~$25/month
+#
+# Upgrade plans for better performance:
+#   Web Service Pro:    $25/month (more CPU/RAM)
+#   PostgreSQL Std:     $50/month (more storage/connections)
+#   Redis Std:          $30/month (more memory)
+#
+# ===========================================
+# MONITORING & LOGS
+# ===========================================
+#
+# View Logs:
+#   1. Go to https://dashboard.render.com
+#   2. Select your service
+#   3. Click "Logs" tab
+#   4. See application output and errors
+#
+# Monitor Performance:
+#   1. Select your service
+#   2. Click "Metrics" tab
+#   3. View CPU, Memory, and Network usage
+#   4. Set up alerts if needed
+#
+# ===========================================
