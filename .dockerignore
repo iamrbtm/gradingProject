@@ -1,0 +1,93 @@
+# ===========================================
+# Docker Build Optimization
+# ===========================================
+# Exclude unnecessary files from Docker context
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Development files
+.git/
+.gitignore
+.env
+.env.local
+.env.development
+*.log
+logs/
+*.sqlite
+*.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Test files  
+tests/
+*_test.py
+test_*.py
+pytest.ini
+.coverage
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Development docker files
+docker-compose.override.yml
+docker-compose.dev.yml
+
+# Large data files that shouldn't be in container
+*.csv
+*.xlsx
+*.json
+data/
+uploads/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Render.com & kubernetes configs
+render.yaml
+.renderignore
+k8s-deployment.yaml
+
+# Passenger specific
+passenger_wsgi.py*

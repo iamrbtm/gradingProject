@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Canvas Import{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Complete Canvas Import</h1>
+    
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800">
+                    Import Incomplete
+                </h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    <p>The following issues were found with your Canvas import data. Please complete the missing information below:</p>
+                    <ul class="list-disc pl-5 mt-2">
+                        {% for issue in validation_results.issues %}
+                        <li>{{ issue }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form action="{{ url_for('main.complete_canvas_import', course_id=course.id) }}" method="post" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="canvas_data" value="{{ canvas_data_json }}">
+        
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Assignment Details</h3>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Assignment Name
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Category
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Score
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Max Score
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Due Date
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for idx, row in assignments_data %}
+                            <tr class="{% if idx in validation_results.missing_max_scores or idx in validation_results.invalid_names %}bg-red-50{% elif idx in validation_results.missing_due_dates %}bg-yellow-50{% endif %}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if idx in validation_results.invalid_names %}
+                                    <input type="text" 
+                                           name="name_{{ idx }}" 
+                                           value="{{ row.name or '' }}"
+                                           class="block w-full border-red-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                                           placeholder="Enter assignment name"
+                                           required>
+                                    {% else %}
+                                    <span class="text-sm text-gray-900">{{ row.name }}</span>
+                                    <input type="hidden" name="name_{{ idx }}" value="{{ row.name }}">
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ row.category or 'N/A' }}
+                                    <input type="hidden" name="category_{{ idx }}" value="{{ row.category or '' }}">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ row.score if row.score is not none else 'N/A' }}
+                                    <input type="hidden" name="score_{{ idx }}" value="{{ row.score or '' }}">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if idx in validation_results.missing_max_scores %}
+                                    <input type="number" 
+                                           name="max_score_{{ idx }}" 
+                                           value="{{ row.max_score or '' }}"
+                                           step="0.01"
+                                           min="0"
+                                           class="block w-full border-red-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                                           placeholder="Enter max score"
+                                           required>
+                                    {% else %}
+                                    <span class="text-sm text-gray-900">{{ row.max_score }}</span>
+                                    <input type="hidden" name="max_score_{{ idx }}" value="{{ row.max_score }}">
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if idx in validation_results.missing_due_dates %}
+                                    <input type="date" 
+                                           name="due_date_{{ idx }}" 
+                                           value="{{ row.due_date or '' }}"
+                                           class="block w-full border-yellow-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm" 
+                                           placeholder="Optional due date">
+                                    {% else %}
+                                    <span class="text-sm text-gray-900">{{ row.due_date or 'N/A' }}</span>
+                                    <input type="hidden" name="due_date_{{ idx }}" value="{{ row.due_date or '' }}">
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end space-x-3">
+            <a href="{{ url_for('main.view_course', course_id=course.id) }}" 
+               class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
+                Cancel
+            </a>
+            <button type="submit" 
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                <i class="fas fa-check mr-2"></i>Complete Import
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

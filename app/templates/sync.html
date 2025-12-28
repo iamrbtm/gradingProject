@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+
+{% block title %}Assignment Sync{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-6">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Google Tasks Synchronization</h1>
+    
+    {% if setup_required %}
+    <!-- Google API Setup Required -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-lg font-medium text-yellow-800">Google API Setup Required</h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    <p class="mb-4">To sync assignments with Google Tasks, you need to set up Google API credentials.</p>
+                    {{ setup_instructions | safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif auth_required %}
+    <!-- Google Authentication Required -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <i class="fas fa-sign-in-alt text-blue-400 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-lg font-medium text-blue-800">Google Authentication Required</h3>
+                <div class="mt-2 text-sm text-blue-700">
+                    <p class="mb-4">Please authorize this application to access your Google Tasks.</p>
+                    <a href="{{ auth_url }}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-google mr-2"></i>
+                        Connect to Google Tasks
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    
+    <!-- Sync Status Overview -->
+    <div class="bg-white shadow-lg rounded-lg mb-6">
+        <div class="border-b border-gray-200 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Sync Status Overview</h2>
+        </div>
+        <div class="px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-blue-600">{{ total_assignments }}</div>
+                    <p class="text-gray-600">Total Assignments</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-green-600">{{ synced_tasks }}</div>
+                    <p class="text-gray-600">Synced to Google Tasks</p>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold text-yellow-600">{{ needs_sync }}</div>
+                    <p class="text-gray-600">Need Sync</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sync Actions -->
+    <div class="bg-white shadow-lg rounded-lg mb-6">
+        <div class="border-b border-gray-200 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Sync Actions</h2>
+        </div>
+        <div class="px-6 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="space-y-2">
+                    <button type="button" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200" 
+                            onclick="startSyncAll()">
+                        <i class="fas fa-sync-alt mr-2"></i> Sync All Assignments
+                    </button>
+                    <p class="text-sm text-gray-500">Sync all ungraded assignments to Google Tasks</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <button type="button" 
+                            id="bulk-sync-btn"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:opacity-50" 
+                            onclick="startBulkSync()" 
+                            disabled>
+                        <i class="fas fa-check-square mr-2"></i> Sync Selected
+                    </button>
+                    <p class="text-sm text-gray-500">Sync only selected assignments</p>
+                </div>
+                
+                <div class="space-y-2">
+                    <button type="button" 
+                            class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200"
+                            onclick="clearAllSynced()">
+                        <i class="fas fa-trash-alt mr-2"></i> Clear All Synced
+                    </button>
+                    <p class="text-sm text-gray-500">Remove all assignments from Google Tasks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Progress Bar Section -->
+    <div class="bg-white shadow-lg rounded-lg mb-6" id="progress-section" style="display: none;">
+        <div class="border-b border-gray-200 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Sync Progress</h2>
+        </div>
+        <div class="px-6 py-4">
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-600">Progress</span>
+                    <div class="flex items-center space-x-4 text-sm text-gray-600">
+                        <span><i class="fas fa-clock"></i> <span id="elapsed-time">0.0s</span></span>
+                        <span>Items: <span id="progress-items">0 / 0</span></span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-6">
+                    <div class="bg-blue-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center" 
+                         id="sync-progress-bar" 
+                         style="width: 0%;">
+                        <span class="text-white text-sm font-medium" id="progress-text">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-2">
+                <span class="text-sm text-gray-600">
+                    <i class="fas fa-info-circle"></i> 
+                    Status: <span id="current-operation" class="font-medium">Ready</span>
+                </span>
+            </div>
+            <div id="error-section" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4" style="display: none;">
+                <h6 class="text-yellow-800 font-medium mb-2">
+                    <i class="fas fa-exclamation-triangle"></i> Errors:
+                </h6>
+                <ul id="error-list" class="text-yellow-700 text-sm list-disc pl-5"></ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Assignment Details -->
+    <div class="bg-white shadow-lg rounded-lg">
+        <div class="border-b border-gray-200 px-6 py-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-900">Assignment Sync Details</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="select-all" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <label for="select-all" class="text-sm text-gray-700">Select All</label>
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <input type="checkbox" id="header-select" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assignment</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Synced</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for assignment in assignments %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if assignment.needs_sync and not assignment.is_graded %}
+                            <input type="checkbox" 
+                                   class="assignment-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                   data-assignment-id="{{ assignment.id }}">
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ assignment.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ assignment.course_name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if assignment.due_date %}
+                                <div class="text-sm text-gray-900">{{ assignment.due_date.strftime('%Y-%m-%d') }}</div>
+                            {% else %}
+                                <span class="text-gray-400">No due date</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if assignment.is_graded %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    Graded
+                                </span>
+                            {% elif assignment.needs_sync %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    Needs Sync
+                                </span>
+                            {% elif assignment.has_task_id %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    Synced
+                                </span>
+                            {% else %}
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    Not Synced
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if assignment.last_synced_tasks %}
+                                <div class="text-sm text-gray-900">{{ assignment.last_synced_tasks.strftime('%m/%d %H:%M') }}</div>
+                            {% else %}
+                                <span class="text-gray-400">Never</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {% if not assignment.is_graded %}
+                            <button type="button" 
+                                    class="text-blue-600 hover:text-blue-900 transition duration-200" 
+                                    onclick="syncIndividual({{ assignment.id }})" 
+                                    title="Sync this assignment">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let progressInterval = null;
+
+// Checkbox selection management
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const headerSelectCheckbox = document.getElementById('header-select');
+    const assignmentCheckboxes = document.querySelectorAll('.assignment-checkbox');
+    const bulkSyncBtn = document.getElementById('bulk-sync-btn');
+    
+    // Header checkbox functionality
+    if (headerSelectCheckbox) {
+        headerSelectCheckbox.addEventListener('change', function() {
+            assignmentCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkSyncButton();
+        });
+    }
+    
+    // Select all checkbox functionality
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            assignmentCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            if (headerSelectCheckbox) {
+                headerSelectCheckbox.checked = this.checked;
+            }
+            updateBulkSyncButton();
+        });
+    }
+    
+    // Individual checkbox functionality
+    assignmentCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkSyncButton);
+    });
+    
+    function updateBulkSyncButton() {
+        const checkedBoxes = document.querySelectorAll('.assignment-checkbox:checked');
+        bulkSyncBtn.disabled = checkedBoxes.length === 0;
+        
+        // Update header checkbox state
+        if (headerSelectCheckbox) {
+            const allChecked = assignmentCheckboxes.length > 0 && 
+                             Array.from(assignmentCheckboxes).every(cb => cb.checked);
+            const someChecked = Array.from(assignmentCheckboxes).some(cb => cb.checked);
+            
+            headerSelectCheckbox.checked = allChecked;
+            headerSelectCheckbox.indeterminate = someChecked && !allChecked;
+        }
+    }
+});
+
+// Sync Functions
+function startSyncAll() {
+    showProgressSection();
+    resetProgress('Starting sync all...');
+    
+    fetch('{{ url_for("main.sync_all_assignments") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            startProgressPolling();
+        } else {
+            alert('Failed to start sync: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error starting sync: ' + error);
+    });
+}
+
+function startBulkSync() {
+    const checkedBoxes = document.querySelectorAll('.assignment-checkbox:checked');
+    const assignmentIds = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.assignmentId));
+    
+    if (assignmentIds.length === 0) {
+        alert('Please select assignments to sync.');
+        return;
+    }
+    
+    showProgressSection();
+    resetProgress('Starting bulk sync...');
+    
+    fetch('{{ url_for("main.sync_bulk_assignments") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ assignment_ids: assignmentIds })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Start the actual sync execution
+            fetch('{{ url_for("main.execute_sync") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    sync_type: 'bulk',
+                    assignment_ids: assignmentIds 
+                })
+            })
+            .then(() => startProgressPolling())
+            .catch(error => alert('Error executing bulk sync: ' + error));
+        } else {
+            alert('Failed to start bulk sync: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error starting bulk sync: ' + error);
+    });
+}
+
+function syncIndividual(assignmentId) {
+    if (!confirm('Sync this assignment to Google Tasks?')) {
+        return;
+    }
+    
+    fetch(`{{ url_for("main.sync_individual_assignment", assignment_id=0) }}`.replace('0', assignmentId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Assignment synced successfully!');
+            location.reload();
+        } else {
+            alert('Failed to sync assignment: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error syncing assignment: ' + error);
+    });
+}
+
+function clearAllSynced() {
+    if (!confirm('This will remove ALL synced assignments from Google Tasks and clear their sync status. This cannot be undone. Are you sure?')) {
+        return;
+    }
+    
+    showProgressSection();
+    resetProgress('Starting clear operation...');
+    
+    fetch('{{ url_for("main.clear_all_synced") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully cleared ${data.cleared} assignments from Google Tasks!`);
+            location.reload();
+        } else {
+            alert('Failed to clear assignments: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error clearing assignments: ' + error);
+    });
+}
+
+// Progress Management
+function showProgressSection() {
+    document.getElementById('progress-section').style.display = 'block';
+}
+
+function resetProgress(operation) {
+    updateProgressUI({
+        progress_percent: 0,
+        completed_items: 0,
+        total_items: 0,
+        elapsed_time: 0,
+        current_operation: operation,
+        errors: [],
+        is_complete: false
+    });
+}
+
+function startProgressPolling() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+    progressInterval = setInterval(checkProgress, 500);
+}
+
+function checkProgress() {
+    fetch('{{ url_for("main.get_sync_progress") }}')
+    .then(response => response.json())
+    .then(data => {
+        updateProgressUI(data);
+        
+        if (data.is_complete) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+            
+            // Show completion message
+            setTimeout(() => {
+                alert('Sync completed! Page will refresh.');
+                location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking progress:', error);
+    });
+}
+
+function updateProgressUI(data) {
+    // Update progress bar
+    const progressBar = document.getElementById('sync-progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    progressBar.style.width = data.progress_percent + '%';
+    progressText.textContent = data.progress_percent + '%';
+    
+    // Update progress color based on completion and errors
+    progressBar.className = 'bg-blue-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    if (data.is_complete) {
+        progressBar.className = 'bg-green-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    } else if (data.errors.length > 0) {
+        progressBar.className = 'bg-yellow-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    }
+    
+    // Update elapsed time
+    document.getElementById('elapsed-time').textContent = data.elapsed_time + 's';
+    
+    // Update items count
+    document.getElementById('progress-items').textContent = 
+        data.completed_items + ' / ' + data.total_items;
+    
+    // Update current operation
+    document.getElementById('current-operation').textContent = data.current_operation;
+    
+    // Update errors
+    const errorSection = document.getElementById('error-section');
+    const errorList = document.getElementById('error-list');
+    
+    if (data.errors.length > 0) {
+        errorSection.style.display = 'block';
+        errorList.innerHTML = '';
+        data.errors.forEach(error => {
+            const li = document.createElement('li');
+            li.textContent = error;
+            errorList.appendChild(li);
+        });
+    } else {
+        errorSection.style.display = 'none';
+    }
+}
+
+// Clean up interval on page unload
+window.addEventListener('beforeunload', function() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+# --- Python Specific ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+
+# --- macOS System Files ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Text Editors & IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.elixir_ls/
+
+# --- Common Build/Temp Files ---
+node_modules/
+dist/
+build/
+out/
+target/
+*.log
+.env
+.env.local
+
+# --- Python (if applicable) ---
+__pycache__/
+*.py[cod]
+venv/
+.venv/

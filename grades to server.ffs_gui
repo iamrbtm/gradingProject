@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FreeFileSync XmlType="GUI" XmlFormat="23">
+    <Notes/>
+    <Compare>
+        <Variant>TimeAndSize</Variant>
+        <Symlinks>Exclude</Symlinks>
+        <IgnoreTimeShift/>
+    </Compare>
+    <Synchronize>
+        <Differences LeftOnly="right" LeftNewer="right" RightNewer="right" RightOnly="right"/>
+        <DeletionPolicy>RecycleBin</DeletionPolicy>
+        <VersioningFolder Style="Replace"/>
+    </Synchronize>
+    <Filter>
+        <Include>
+            <Item>*</Item>
+        </Include>
+        <Exclude>
+            <Item>*/._*</Item>
+            <Item>*/.DocumentRevisions-V100/</Item>
+            <Item>*/.DS_Store</Item>
+            <Item>*/.fseventsd/</Item>
+            <Item>*/.Spotlight-V100/</Item>
+            <Item>*/.TemporaryItems/</Item>
+            <Item>*/.Trashes/</Item>
+            <Item>*/.idea/</Item>
+            <Item>*/.vscode/</Item>
+            <Item>*/__pycache__/</Item>
+            <Item>*/node_modules/</Item>
+            <Item>*/venv/</Item>
+            <Item>/stderr.log</Item>
+        </Exclude>
+        <SizeMin Unit="None">0</SizeMin>
+        <SizeMax Unit="None">0</SizeMax>
+        <TimeSpan Type="None">0</TimeSpan>
+    </Filter>
+    <FolderPairs>
+        <Pair>
+            <Left>/Users/rbtm2006/Downloads/gradingProject</Left>
+            <Right>sftp://onlymyli@jeremyguill.com/home/onlymyli/public_html/grades|chan=10|pass64=QnJhY2VzNG1lIyM=</Right>
+        </Pair>
+    </FolderPairs>
+    <Errors Ignore="false" Retry="0" Delay="5"/>
+    <PostSyncCommand Condition="Completion"/>
+    <LogFolder/>
+    <EmailNotification Condition="Always"/>
+    <GridViewType>Difference</GridViewType>
+</FreeFileSync>

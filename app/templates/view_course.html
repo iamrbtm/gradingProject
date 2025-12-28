@@ -1,0 +1,911 @@
+{% extends "base.html" %}
+
+{% block title %}Course: {{ course.name }}{% endblock %}
+
+{% block content %}
+<style>
+/* Assignment due date color coding */
+.assignment-due-today {
+    border-left: 5px solid #8b5cf6 !important; /* Bright purple */
+}
+
+.assignment-due-tomorrow {
+    border-left: 5px solid #3b82f6 !important; /* Bright blue */
+}
+
+.assignment-due-this-week {
+    border-left: 5px solid #10b981 !important; /* Bright green */
+}
+
+.assignment-overdue {
+    border-left: 5px solid #ef4444 !important; /* Bright red */
+    background-color: #fef2f2 !important; /* Light red background */
+}
+
+/* For table rows in desktop view */
+tr.assignment-due-today {
+    border-left: 5px solid #8b5cf6 !important;
+}
+
+tr.assignment-due-tomorrow {
+    border-left: 5px solid #3b82f6 !important;
+}
+
+tr.assignment-due-this-week {
+    border-left: 5px solid #10b981 !important;
+}
+
+tr.assignment-overdue {
+    border-left: 5px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+</style>
+<div class="bg-white p-6 rounded-lg shadow-xl border border-gray-200 print:bg-transparent print:shadow-none print:border-none">
+    <!-- Header Section -->
+    <div class="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0 mb-6">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">Course: {{ course.name }} ({{ course.credits }} credits)</h1>
+        <div class="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-3">
+            <!-- Course Selector -->
+            <div class="relative">
+                <button id="courseSelectorBtn" class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full transition duration-300 shadow-sm w-full sm:w-10 h-11 sm:h-10 flex items-center justify-center">
+                    <i class="fas fa-list-ul sm:mr-0 mr-2"></i>
+                    <span class="sm:hidden">Switch Course</span>
+                </button>
+                <div id="courseSelectorPopover" class="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-10 hidden">
+                    <ul class="py-1">
+                        {% for term_course in term_courses %}
+                            {% if term_course.id != course.id %}
+                                <li>
+                                    <a href="{{ url_for('main.view_course', course_id=term_course.id) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ term_course.name }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Actions Menu -->
+            <div class="relative">
+                <button id="actionsMenuBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition duration-300 shadow-sm flex items-center justify-center h-11 w-full sm:w-auto">
+                    <i class="fas fa-cog mr-2"></i>Actions
+                    <i class="fas fa-chevron-down ml-2"></i>
+                </button>
+                <div id="actionsMenuPopover" class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-20 hidden">
+                    <div class="py-1">
+                        <button onclick="openModal('importCsvModal')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-file-upload mr-3 text-blue-500"></i>Import CSV File
+                        </button>
+                         <button onclick="openModal('importCanvasModal')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                             <i class="fas fa-paste mr-3 text-orange-500"></i>Import Canvas Data
+                         </button>
+                         {% if current_user.canvas_base_url and current_user.canvas_access_token and course.canvas_course_id %}
+                         <button type="button" onclick="startCanvasSync('course', {{ course.id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                             <i class="fas fa-sync mr-3 text-green-500"></i>Sync from Canvas
+                         </button>
+                         {% endif %}
+                        <button onclick="openModal('addCategoryModal')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-tags mr-3 text-green-500"></i>Categories
+                        </button>
+                        <div class="border-t border-gray-100"></div>
+                        <button onclick="openModal('renameCourseModal')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-edit mr-3 text-teal-500"></i>Rename Course
+                        </button>
+                        <a href="{{ url_for('main.audit_trail', course_id=course.id) }}" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-history mr-3 text-indigo-500"></i>Audit Trail
+                        </a>
+                        <button onclick="openModal('courseSettingsModal')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-cogs mr-3 text-purple-500"></i>Course Settings
+                        </button>
+                        <div class="border-t border-gray-100"></div>
+                        <a href="{{ url_for('main.course_report', course_id=course.id) }}" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-chart-bar mr-3 text-gray-500"></i>Course Report
+                        </a>
+                        
+                        <!-- Export Options -->
+                        <div class="border-t border-gray-100"></div>
+                        <div class="px-4 py-2">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Export Data</div>
+                        </div>
+                        <button onclick="exportCourseData('csv', {{ course.id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-file-csv mr-3 text-green-500"></i>Export as CSV
+                        </button>
+                        <button onclick="exportCourseData('excel', {{ course.id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-file-excel mr-3 text-green-600"></i>Export as Excel
+                        </button>
+                        <button onclick="exportCourseData('pdf', {{ course.id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-file-pdf mr-3 text-red-500"></i>Export as PDF Report
+                        </button>
+                        
+                        <!-- Analytics Options -->
+                        <div class="border-t border-gray-100"></div>
+                        <div class="px-4 py-2">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Analytics</div>
+                        </div>
+                        <a href="{{ url_for('main.dashboard') }}?course_id={{ course.id }}" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-chart-line mr-3 text-purple-500"></i>Course Analytics
+                        </a>
+                        <button onclick="generatePredictions({{ course.id }})" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center">
+                            <i class="fas fa-crystal-ball mr-3 text-blue-500"></i>Grade Predictions
+                        </button>
+                        
+                        <div class="border-t border-gray-100"></div>
+                        <form action="{{ url_for('main.delete_course', course_id=course.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this course and all its assignments? This cannot be undone.');" class="block">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
+                                <i class="fas fa-trash mr-3"></i>Delete Course
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Sync Progress Section -->
+    <div class="mb-6 bg-white shadow-lg rounded-lg" id="canvas-progress-section" style="display: none;">
+        <div class="border-b border-gray-200 px-6 py-4">
+            <h2 class="text-lg font-semibold text-gray-900">Canvas Sync Progress</h2>
+        </div>
+        <div class="px-6 py-4">
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-600">Progress</span>
+                    <div class="flex items-center space-x-4 text-sm text-gray-600">
+                        <span><i class="fas fa-clock"></i> <span id="canvas-elapsed-time">0.0s</span></span>
+                        <span>Items: <span id="canvas-progress-items">0 / 0</span></span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-6">
+                    <div class="bg-blue-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center" 
+                         id="canvas-progress-bar" 
+                         style="width: 0%;">
+                        <span class="text-white text-sm font-medium" id="canvas-progress-text">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-2">
+                <span class="text-sm text-gray-600">
+                    <i class="fas fa-info-circle"></i> 
+                    Status: <span id="canvas-current-operation" class="font-medium">Ready</span>
+                </span>
+            </div>
+            <div id="canvas-error-section" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4" style="display: none;">
+                <h6 class="text-yellow-800 font-medium mb-2">
+                    <i class="fas fa-exclamation-triangle"></i> Errors:
+                </h6>
+                <ul id="canvas-error-list" class="text-yellow-700 text-sm list-disc pl-5"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Course Stats Section -->
+    <div class="mb-8 p-4 bg-blue-50 rounded-md border border-blue-200 print:bg-transparent print:border-none">
+        <h2 class="text-xl font-semibold text-blue-800 mb-2">Course Statistics</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+                <div class="text-2xl font-bold text-blue-600">{{ assignments|length }}</div>
+                <div class="text-sm text-gray-600">Total Assignments</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+                <div class="text-2xl font-bold text-green-600">{{ completed_count }}</div>
+                <div class="text-sm text-gray-600">Completed</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+                <div class="text-2xl font-bold text-yellow-600">{{ pending_count }}</div>
+                <div class="text-sm text-gray-600">Pending</div>
+            </div>
+            <div class="bg-white rounded-lg p-3 shadow-sm">
+                <div class="text-2xl font-bold {% if overall_grade_percentage >= 90 %}text-green-600{% elif overall_grade_percentage >= 80 %}text-blue-600{% elif overall_grade_percentage >= 70 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                    {%- set safe_overall_grade = overall_grade_percentage if overall_grade_percentage is not none and overall_grade_percentage != 'undefined' else none -%}
+                    {%- if safe_overall_grade is not none -%}
+                        {{ "%.1f"|format(safe_overall_grade|float(0)) }}
+                    {%- else -%}
+                        N/A
+                    {%- endif -%}
+                </div>
+                <div class="text-sm text-gray-600">Current Grade</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weighted Course Settings -->
+    {% if is_weighted %}
+    <div class="mb-8 p-4 bg-green-50 rounded-md border border-green-200 print:bg-transparent print:border-none">
+        <h2 class="text-xl font-semibold text-green-800 mb-2">Weighted Course Settings</h2>
+        <p class="text-md text-green-700 mb-3">This course uses weighted categories for grade calculation.</p>
+        <div class="flex items-center space-x-4">
+            <form action="{{ url_for('main.convert_course_to_unweighted', course_id=course.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to convert this course to unweighted? Current category weights will be removed.');">
+                <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-semibold transition duration-300 ease-in-out shadow-md">
+                    Convert to Unweighted
+                </button>
+            </form>
+        </div>
+    </div>
+    {% elif not course.is_weighted and grade_categories %}
+    <div class="mb-8 p-4 bg-green-50 rounded-md border border-green-200 print:bg-transparent print:border-none">
+        <h2 class="text-xl font-semibold text-green-800 mb-2">Course Settings</h2>
+        <p class="text-md text-green-700 mb-3">This course uses categories without weights. You can convert it to use weighted categories for more advanced grade calculation.</p>
+        <form action="{{ url_for('main.convert_course_to_weighted', course_id=course.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to convert this course to weighted? This will assign equal weights to all categories, which you can then adjust as needed.');">
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-semibold transition duration-300 ease-in-out shadow-md">
+                Convert to Weighted Course
+            </button>
+        </form>
+    </div>
+    {% elif not course.is_weighted and not grade_categories %}
+    <div class="mb-8 p-4 bg-blue-50 rounded-md border border-blue-200 print:bg-transparent print:border-none">
+        <h2 class="text-xl font-semibold text-blue-800 mb-2">Course Settings</h2>
+        <p class="text-md text-blue-700 mb-3">This course doesn't use weighted categories. To enable weighted grading, you'll need to create categories first.</p>
+        <p class="text-sm text-blue-600">Create some categories below, then you can convert this course to use weighted grading.</p>
+    </div>
+    {% endif %}
+
+    <div class="mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add New Assignment</h2>
+        <form action="{{ url_for('main.add_assignment', course_id=course.id) }}" method="POST" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="assignment_name" class="block text-sm font-medium text-gray-700">Assignment Name:</label>
+                    <input type="text" id="assignment_name" name="name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div id="category_field" style="display: {% if is_weighted or course.is_category %}block{% else %}none{% endif %};">
+                    <label for="category_id" class="block text-sm font-medium text-gray-700">Category (Optional):</label>
+                    <select id="category_id" name="category_id" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <option value="">-- Select Category --</option>
+                        {% if is_weighted %}
+                            {% for category in grade_categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        {% elif course.is_category %}
+                            {% for category in grade_categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="due_date" class="block text-sm font-medium text-gray-700">Due Date (Optional):</label>
+                    <input type="date" id="due_date" name="due_date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="score" class="block text-sm font-medium text-gray-700">Score (Optional):</label>
+                    <input type="number" step="0.01" id="score" name="score" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="max_score" class="block text-sm font-medium text-gray-700">Max Score:</label>
+                    <input type="number" step="0.01" id="max_score" name="max_score" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-md font-semibold transition duration-300 ease-in-out shadow-md">Add Assignment</button>
+            </div>
+        </form>
+    </div>
+
+    {% if is_weighted or course.is_category %}
+    <div class="mb-8 mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Manage Categories</h2>
+        {% if is_weighted %}
+            <div class="mb-4 text-sm flex items-center space-x-3">
+                <p>Total weight:
+                    <span class="font-semibold {% if total_weight_pct == 100 %}text-green-700{% elif total_weight_pct < 100 %}text-yellow-700{% else %}text-red-700{% endif %}">
+                        {%- set safe_total_weight = total_weight_pct if total_weight_pct is not none and total_weight_pct != 'undefined' else 0 -%}
+                        {{ "%.2f"|format(safe_total_weight|float(0)) }}%
+                    </span>
+                </p>
+                {% if total_weight_pct != 100 %}
+                    <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs font-semibold {% if total_weight_pct < 100 %}bg-yellow-600{% else %}bg-red-600{% endif %}">
+                        {% if total_weight_pct < 100 %}
+                            Weights total less than 100% — grades normalized over active categories
+                        {% else %}
+                            Weights exceed 100% — grades normalized over active categories
+                        {% endif %}
+                    </span>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200 mb-4">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b text-left">Name</th>
+                        {% if is_weighted %}<th class="py-2 px-4 border-b text-left">Weight (%)</th>{% endif %}
+                        <th class="py-2 px-4 border-b text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in grade_categories %}
+                    <tr>
+                        <td class="py-2 px-4 border-b">
+                            <form action="{{ url_for('main.update_category', course_id=course.id, category_id=c.id) }}" method="POST" class="flex items-center space-x-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <input type="text" name="name" value="{{ c.name }}" required
+                                       class="flex-1 p-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                {% if is_weighted %}
+                                <input type="number" name="weight" value="{{ c.weight * 100 }}" step="0.1" required
+                                       class="w-20 p-1 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                {% endif %}
+                                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Update</button>
+                            </form>
+                        </td>
+                        {% if is_weighted %}
+                        <td class="py-2 px-4 border-b">
+                            {%- set safe_weight = (c.weight * 100) if c.weight is not none and c.weight != 'undefined' else 0 -%}
+                            {{ "%.1f"|format(safe_weight|float(0)) }}%
+                        </td>
+                        {% endif %}
+                        <td class="py-2 px-4 border-b">
+                            <form action="{{ url_for('main.delete_category', course_id=course.id, category_id=c.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this category? Assignments in this category will become uncategorized.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button onclick="openModal('addCategoryModal')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-semibold transition duration-300 shadow-md">
+                <i class="fas fa-plus mr-2"></i>Add New Category
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Assignments Table -->
+    <div class="mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Assignments</h2>
+        
+        <!-- Mobile View -->
+        <div class="md:hidden space-y-3">
+            {% for assignment in assignments %}
+            {% include 'mobile_assignment_card.html' %}
+            {% endfor %}
+        </div>
+
+        <!-- Desktop View -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="py-3 px-4 border-b text-left">
+                            <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        </th>
+                        <th class="py-3 px-4 border-b text-left">Assignment Name</th>
+                        {% if is_weighted or course.is_category %}<th class="py-3 px-4 border-b text-left">Category</th>{% endif %}
+                        <th class="py-3 px-4 border-b text-left">Due Date</th>
+                        <th class="py-3 px-4 border-b text-left">Score</th>
+                        <th class="py-3 px-4 border-b text-left">Max Score</th>
+                        <th class="py-3 px-4 border-b text-left">Grade</th>
+                        <th class="py-3 px-4 border-b text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for assignment in assignments %}
+                    <tr class="assignment-{{ assignment_statuses[assignment.id] }} hover:bg-gray-50">
+                        <td class="py-3 px-4 border-b">
+                            <input type="checkbox" 
+                                   class="completed-checkbox w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2" 
+                                   data-assignment-id="{{ assignment.id }}"
+                                   {% if assignment.completed %}checked{% endif %}>
+                        </td>
+                        <td class="py-3 px-4 border-b">
+                            <span class="editable-field cursor-pointer hover:bg-gray-100 px-1 py-1 rounded" 
+                                  data-field="name" 
+                                  data-assignment-id="{{ assignment.id }}"
+                                  title="Click to edit assignment name">{{ assignment.name }}</span>
+                        </td>
+                        {% if is_weighted or course.is_category %}
+                        <td class="py-3 px-4 border-b">
+                            {% if assignment.category %}
+                                {{ assignment.category.name }}
+                            {% else %}
+                                <span class="text-gray-400">Uncategorized</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td class="py-3 px-4 border-b">
+                            {% if assignment.due_date %}
+                                <span class="{% if assignment_statuses[assignment.id] == 'assignment-overdue' %}text-red-600 font-semibold{% elif assignment_statuses[assignment.id] == 'assignment-due-today' %}text-purple-600 font-semibold{% elif assignment_statuses[assignment.id] == 'assignment-due-tomorrow' %}text-blue-600 font-semibold{% elif assignment_statuses[assignment.id] == 'assignment-due-this-week' %}text-green-600{% endif %}">
+                                    {{ assignment.due_date.strftime('%m/%d/%Y') }}
+                                </span>
+                            {% else %}
+                                <span class="text-gray-400">No due date</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 border-b">
+                            {% if assignment.score is not none %}
+                                <span class="editable-field cursor-pointer hover:bg-gray-100 px-1 py-1 rounded" 
+                                      data-field="score" 
+                                      data-assignment-id="{{ assignment.id }}"
+                                      title="Click to edit score">{{ assignment.score }}</span>
+                            {% else %}
+                                <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        </td>
+                        <td class="py-3 px-4 border-b">
+                            <span class="editable-field cursor-pointer hover:bg-gray-100 px-1 py-1 rounded" 
+                                  data-field="max_score" 
+                                  data-assignment-id="{{ assignment.id }}"
+                                  title="Click to edit max score">{{ assignment.max_score }}</span>
+                        </td>
+                        <td class="py-3 px-4 border-b">
+                            {% if assignment.score is not none and assignment.percentage is not none %}
+                                {%- set safe_percentage = assignment.percentage if assignment.percentage is not none and assignment.percentage != 'undefined' else none -%}
+                                {%- if safe_percentage is not none -%}
+                                    <span class="font-semibold {% if safe_percentage >= 90 %}text-green-600{% elif safe_percentage >= 80 %}text-blue-600{% elif safe_percentage >= 70 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                        {{ "%.1f"|format(safe_percentage|float(0)) }}%
+                                    </span>
+                                {%- else -%}
+                                    <span class="text-gray-400">—</span>
+                                {%- endif -%}
+                            {% else %}
+                                <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 border-b">
+                            <div class="flex space-x-2">
+                                <button type="button" 
+                                        class="text-blue-600 hover:text-blue-800 transition duration-200" 
+                                        onclick="duplicateAssignment({{ assignment.id }})" 
+                                        title="Duplicate assignment">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button type="button" 
+                                        class="text-red-600 hover:text-red-800 transition duration-200" 
+                                        onclick="deleteAssignment({{ assignment.id }})" 
+                                        title="Delete assignment">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+        <a href="{{ url_for('main.view_term', term_id=course.term_id) }}" class="inline-block bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-semibold transition duration-300 shadow-md">
+            Back to Term
+        </a>
+    </div>
+</div>
+
+<script>
+let canvasProgressInterval = null;
+
+// Canvas Sync Functions
+function startCanvasSync(syncType, targetId = null) {
+    showCanvasProgressSection();
+    resetCanvasProgress('Starting Canvas sync...');
+    
+    fetch('{{ url_for("routes.start_canvas_sync") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            sync_type: syncType,
+            target_id: targetId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            startCanvasProgressPolling();
+        } else {
+            alert('Failed to start Canvas sync: ' + data.message);
+            hideCanvasProgressSection();
+        }
+    })
+    .catch(error => {
+        alert('Error starting Canvas sync: ' + error);
+        hideCanvasProgressSection();
+    });
+}
+
+function showCanvasProgressSection() {
+    document.getElementById('canvas-progress-section').style.display = 'block';
+}
+
+function hideCanvasProgressSection() {
+    document.getElementById('canvas-progress-section').style.display = 'none';
+}
+
+function resetCanvasProgress(operation) {
+    updateCanvasProgressUI({
+        progress_percent: 0,
+        completed_items: 0,
+        total_items: 0,
+        elapsed_time: 0,
+        current_operation: operation,
+        current_item: '',
+        errors: [],
+        is_complete: false
+    });
+}
+
+function startCanvasProgressPolling() {
+    if (canvasProgressInterval) {
+        clearInterval(canvasProgressInterval);
+    }
+    canvasProgressInterval = setInterval(checkCanvasProgress, 500);
+}
+
+function checkCanvasProgress() {
+    fetch('{{ url_for("routes.get_canvas_sync_progress") }}')
+    .then(response => response.json())
+    .then(data => {
+        updateCanvasProgressUI(data);
+        
+        if (data.is_complete) {
+            clearInterval(canvasProgressInterval);
+            canvasProgressInterval = null;
+            
+            // Show completion message
+            setTimeout(() => {
+                if (data.errors.length > 0) {
+                    alert('Canvas sync completed with some errors. Page will refresh.');
+                } else {
+                    alert('Canvas sync completed successfully! Page will refresh.');
+                }
+                location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking Canvas sync progress:', error);
+    });
+}
+
+function updateCanvasProgressUI(data) {
+    // Update progress bar
+    const progressBar = document.getElementById('canvas-progress-bar');
+    const progressText = document.getElementById('canvas-progress-text');
+    
+    progressBar.style.width = data.progress_percent + '%';
+    progressText.textContent = data.progress_percent + '%';
+    
+    // Update progress color based on completion and errors
+    progressBar.className = 'bg-blue-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    if (data.is_complete) {
+        progressBar.className = 'bg-green-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    } else if (data.errors.length > 0) {
+        progressBar.className = 'bg-yellow-600 h-6 rounded-full transition-all duration-300 flex items-center justify-center';
+    }
+    
+    // Update elapsed time
+    document.getElementById('canvas-elapsed-time').textContent = data.elapsed_time + 's';
+    
+    // Update items count
+    document.getElementById('canvas-progress-items').textContent = 
+        data.completed_items + ' / ' + data.total_items;
+    
+    // Update current operation
+    let operationText = data.current_operation;
+    if (data.current_item) {
+        operationText += ' - ' + data.current_item;
+    }
+    document.getElementById('canvas-current-operation').textContent = operationText;
+    
+    // Update errors
+    const errorSection = document.getElementById('canvas-error-section');
+    const errorList = document.getElementById('canvas-error-list');
+    
+    if (data.errors.length > 0) {
+        errorSection.style.display = 'block';
+        errorList.innerHTML = '';
+        data.errors.forEach(error => {
+            const li = document.createElement('li');
+            li.textContent = error;
+            errorList.appendChild(li);
+        });
+    } else {
+        errorSection.style.display = 'none';
+    }
+}
+
+// CSRF Token helper
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token ? token.getAttribute('content') : '';
+}
+
+// Clean up interval on page unload
+window.addEventListener('beforeunload', function() {
+    if (canvasProgressInterval) {
+        clearInterval(canvasProgressInterval);
+        }
+    });
+    
+    // Export functionality
+    window.exportCourseData = async function(format, courseId) {
+        try {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            
+            // Show loading state
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Exporting...';
+            button.disabled = true;
+            
+            const response = await fetch('/api/analytics/export-course', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    format: format,
+                    course_id: courseId,
+                    email_delivery: true
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                showNotification(`${format.toUpperCase()} export started! You will receive an email when ready.`, 'success');
+            } else {
+                showNotification(`Export failed: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            showNotification(`Export failed: ${error.message}`, 'error');
+        } finally {
+            // Restore button state
+            setTimeout(() => {
+                const button = event.target;
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }, 2000);
+        }
+    };
+    
+    window.generatePredictions = async function(courseId) {
+        try {
+            const button = event.target;
+            const originalText = button.innerHTML;
+            
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Predicting...';
+            button.disabled = true;
+            
+            const response = await fetch(`/api/analytics/predictions?course_id=${courseId}`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // Redirect to analytics page with predictions
+                window.open(`/analytics#predictions?course_id=${courseId}`, '_blank');
+            } else {
+                showNotification(`Prediction failed: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            showNotification(`Prediction failed: ${error.message}`, 'error');
+        } finally {
+            setTimeout(() => {
+                const button = event.target;
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }, 2000);
+        }
+    };
+    
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+            type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+            type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
+            'bg-blue-100 text-blue-800 border border-blue-200'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <i class="fas ${
+                    type === 'success' ? 'fa-check-circle' :
+                    type === 'error' ? 'fa-exclamation-circle' :
+                    'fa-info-circle'
+                } mr-2"></i>
+                <span class="text-sm">${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" class="ml-3 text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    // Modal management functions
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent body scroll
+        
+        // Close actions menu when opening modal
+        document.getElementById('actionsMenuPopover').classList.add('hidden');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+        document.body.style.overflow = 'auto'; // Restore body scroll
+    }
+
+    // Close modals when clicking outside
+    document.addEventListener('click', function(event) {
+        const modals = document.querySelectorAll('.fixed.inset-0');
+        const isModalButton = event.target.closest('button[onclick*="openModal"]');
+        
+        if (!isModalButton && !event.target.closest('.modal-content')) {
+            modals.forEach(modal => {
+                modal.classList.add('hidden');
+            });
+            document.body.style.overflow = 'auto';
+        }
+    });
+
+    // Course selector functionality
+    document.getElementById('courseSelectorBtn').addEventListener('click', function() {
+        document.getElementById('courseSelectorPopover').classList.toggle('hidden');
+    });
+
+    // Actions menu functionality
+    document.getElementById('actionsMenuBtn').addEventListener('click', function() {
+        document.getElementById('actionsMenuPopover').classList.toggle('hidden');
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        const courseSelector = document.getElementById('courseSelectorPopover');
+        const actionsMenu = document.getElementById('actionsMenuPopover');
+        const isCourseSelectorButton = event.target.closest('#courseSelectorBtn');
+        const isActionsMenuButton = event.target.closest('#actionsMenuBtn');
+        
+        if (!isCourseSelectorButton && !event.target.closest('#courseSelectorPopover')) {
+            courseSelector.classList.add('hidden');
+        }
+        
+        if (!isActionsMenuButton && !event.target.closest('#actionsMenuPopover')) {
+            actionsMenu.classList.add('hidden');
+        }
+    });
+
+    // Assignment functionality
+    function deleteAssignment(assignmentId) {
+        if (confirm('Are you sure you want to delete this assignment?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("main.delete_assignment", assignment_id=0) }}'.replace('0', assignmentId);
+            
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = 'csrf_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            
+            form.appendChild(csrfToken);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function duplicateAssignment(assignmentId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("main.duplicate_assignment", assignment_id=0) }}'.replace('0', assignmentId);
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrf_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Select all functionality
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.completed-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Inline editing functionality
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('editable-field')) {
+            const field = event.target.dataset.field;
+            const assignmentId = event.target.dataset.assignmentId;
+            const currentValue = event.target.textContent.trim();
+            
+            const input = document.createElement('input');
+            input.type = field === 'score' || field === 'max_score' ? 'number' : 'text';
+            input.value = currentValue;
+            input.className = 'w-full p-1 border border-blue-500 rounded focus:ring-blue-500 focus:border-blue-500 sm:text-sm';
+            
+            if (field === 'score' || field === 'max_score') {
+                input.step = '0.01';
+            }
+            
+            event.target.replaceWith(input);
+            input.focus();
+            input.select();
+            
+            function saveEdit() {
+                const newValue = input.value.trim();
+                if (newValue && newValue !== currentValue) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{{ url_for("main.update_assignment_field", assignment_id=0) }}'.replace('0', assignmentId);
+                    
+                    const csrfToken = document.createElement('input');
+                    csrfToken.type = 'hidden';
+                    csrfToken.name = 'csrf_token';
+                    csrfToken.value = '{{ csrf_token() }}';
+                    
+                    const fieldInput = document.createElement('input');
+                    fieldInput.type = 'hidden';
+                    fieldInput.name = field;
+                    fieldInput.value = newValue;
+                    
+                    form.appendChild(csrfToken);
+                    form.appendChild(fieldInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                } else {
+                    // Restore original if no change
+                    const span = document.createElement('span');
+                    span.className = event.target.className;
+                    span.textContent = currentValue;
+                    span.dataset.field = field;
+                    span.dataset.assignmentId = assignmentId;
+                    input.replaceWith(span);
+                }
+            }
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                }
+            });
+        }
+    });
+
+    // Toggle assignment completion
+    document.addEventListener('change', function(event) {
+        if (event.target.classList.contains('completed-checkbox')) {
+            const assignmentId = event.target.dataset.assignmentId;
+            const isCompleted = event.target.checked;
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("main.toggle_assignment_completion", assignment_id=0) }}'.replace('0', assignmentId);
+            
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = 'csrf_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            
+            const completedInput = document.createElement('input');
+            completedInput.type = 'hidden';
+            completedInput.name = 'completed';
+            completedInput.value = isCompleted ? 'true' : 'false';
+            
+            form.appendChild(csrfToken);
+            form.appendChild(completedInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+</script>
+{% endblock %}

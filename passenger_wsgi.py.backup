@@ -1,0 +1,28 @@
+import sys
+import os
+
+# Add the project directory to the sys.path
+project_path = '/home/onlymyli/public_html/grades'
+if project_path not in sys.path:
+    sys.path.insert(0, project_path)
+
+# Set environment variables for production
+os.environ['FLASK_ENV'] = 'production'
+os.environ['DATABASE_URL'] = 'mysql+pymysql://onlymyli:Braces4me%23%23@jeremyguill.com:3306/onlymyli_grades'
+
+from app import create_app
+
+class ScriptNameMiddleware:
+    def __init__(self, app, script_name):
+        self.app = app
+        self.script_name = script_name
+
+    def __call__(self, environ, start_response):
+        environ['SCRIPT_NAME'] = self.script_name
+        return self.app(environ, start_response)
+
+# Create the Flask app
+app = create_app('production')
+
+# Wrap the app with middleware to set SCRIPT_NAME
+application = ScriptNameMiddleware(app, '/grades')

@@ -1,0 +1,40 @@
+@media print {
+  .bg-white, .shadow-xl, .rounded-lg, .border {
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  header, footer, .background {
+    display: none !important;
+  }
+  body {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-visible {
+    display: block !important;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .border {
+    border: 1px solid black;
+  }
+}

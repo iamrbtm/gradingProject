@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Assignment Calendar{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-xl border border-gray-200">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Assignment Calendar</h1>
+        <a href="{{ url_for('main.dashboard') }}" class="text-blue-600 hover:text-blue-800 transition duration-300">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Calendar Navigation -->
+    <div class="mb-6 flex justify-between items-center">
+        <h2 class="text-xl font-semibold text-gray-700">All Assignments by Due Date</h2>
+        <div class="text-sm text-gray-600">
+            Total assignments: {{ assignments_by_date | sum(attribute='1 | length') }}
+        </div>
+    </div>
+
+    <!-- Assignments List -->
+    <div class="space-y-4">
+        {% for date, assignments in assignments_by_date.items() %}
+        <div class="border rounded-lg p-4 {% if assignments[0].is_overdue %}border-red-300 bg-red-50{% else %}border-gray-200{% endif %}">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    {{ date | strftime('%A, %B %d, %Y') }}
+                </h3>
+                <span class="text-sm text-gray-600">
+                    {{ assignments | length }} assignment(s)
+                </span>
+            </div>
+
+            <div class="space-y-2">
+                {% for assignment in assignments %}
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-gray-900">{{ assignment.name }}</h4>
+                        <p class="text-sm text-gray-600">{{ assignment.course }}</p>
+                        {% if assignment.score is not none %}
+                        <p class="text-sm text-green-600">
+                            Score: {{ assignment.score }}/{{ assignment.max_score }}
+                            ({{ "%.1f"|format(assignment.score / assignment.max_score * 100) }}%)
+                        </p>
+                        {% else %}
+                        <p class="text-sm text-orange-600">Not completed</p>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        {% if assignment.is_overdue %}
+                        <span class="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                            Overdue
+                        </span>
+                        {% elif assignment.completed %}
+                        <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                            Completed
+                        </span>
+                        {% else %}
+                        <span class="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                            Pending
+                        </span>
+                        {% endif %}
+                        <a href="{{ url_for('main.course_detail', course_id=assignment.course_id) }}"
+                           class="text-blue-600 hover:text-blue-800 transition duration-300">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not assignments_by_date %}
+    <div class="text-center py-12">
+        <i class="fas fa-calendar-alt text-6xl text-gray-300 mb-4"></i>
+        <h3 class="text-xl font-medium text-gray-900 mb-2">No assignments with due dates</h3>
+        <p class="text-gray-600">Assignments without due dates won't appear in the calendar view.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

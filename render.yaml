@@ -1,0 +1,172 @@
+# ===========================================
+# Render.com Deployment Configuration
+# ===========================================
+# This configuration deploys the Flask Grade Tracker
+# with PostgreSQL and Redis on Render.com
+# 
+# Usage: Push this file to your repo root and Render will auto-detect it
+# See: https://render.com/docs/infrastructure-as-code
+
+services:
+  # ===========================================
+  # WEB SERVICE
+  # ===========================================
+  - type: web
+    name: gradetracker
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: ./
+    
+    # Auto-scaling configuration
+    plan: standard
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 70
+      targetCPUPercent: 80
+    
+    # Environment variables (reference them in Render dashboard)
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: app.py
+      - key: PORT
+        value: 5000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+      - key: LOG_LEVEL
+        value: INFO
+      
+      # Database configuration - uses Render's managed PostgreSQL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gradetracker-db
+          property: connectionString
+      
+      # Redis configuration - uses Render's managed Redis
+      - key: REDIS_URL
+        fromService:
+          name: gradetracker-redis
+          type: pserv
+          property: connectionString
+      
+      # This should be set in Render dashboard for security
+      - key: FLASK_SECRET_KEY
+        sync: false  # Must be set manually in Render dashboard
+      
+      - key: USE_HTTPS
+        value: "true"
+      
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+    
+    # Secrets (set in Render dashboard)
+    secrets:
+      - key: API_TOKEN_ENCRYPTION_KEY
+      - key: FLASK_SECRET_KEY
+      - key: MAIL_USERNAME
+      - key: MAIL_PASSWORD
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Build command - cache requirements layer
+    buildCommand: pip install -r requirements.txt
+    
+    # Start command
+    startCommand: >
+      gunicorn
+      --bind 0.0.0.0:$PORT
+      --workers 3
+      --worker-class gevent
+      --timeout 120
+      --access-logfile -
+      --error-logfile -
+      app:app
+    
+    # Disk configuration for logs
+    disks:
+      - name: logs
+        mountPath: /app/logs
+        sizeGB: 1
+
+  # ===========================================
+  # POSTGRESQL DATABASE
+  # ===========================================
+  - type: pserv
+    name: gradetracker-db
+    env: docker
+    plan: starter
+    ipAllowList: [] # Allow all Render services
+    
+    dockerImage: postgres:15-alpine
+    
+    envVars:
+      - key: POSTGRES_DB
+        value: gradetracker
+      - key: POSTGRES_USER
+        value: gradetracker_user
+      
+      # Password should be set in Render dashboard
+      - key: POSTGRES_PASSWORD
+        sync: false
+    
+    secrets:
+      - key: POSTGRES_PASSWORD
+    
+    # Disk configuration
+    disks:
+      - name: db_data
+        mountPath: /var/lib/postgresql/data
+        sizeGB: 10
+
+  # ===========================================
+  # REDIS CACHE & SESSION STORE
+  # ===========================================
+  - type: pserv
+    name: gradetracker-redis
+    env: docker
+    plan: starter
+    
+    dockerImage: redis:7-alpine
+    
+    # Redis command with persistence and memory limits
+    dockerCommand: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --timeout 0
+      --tcp-keepalive 300
+    
+    # Disk configuration
+    disks:
+      - name: redis_data
+        mountPath: /data
+        sizeGB: 1
+
+# ===========================================
+# DEPLOYMENT NOTES
+# ===========================================
+# 
+# 1. PostgreSQL is used instead of MySQL for better Render.com compatibility
+#    - Change DATABASE_URL connection string in app if needed
+#    - Or install PyMySQL and use MySQL connection string
+#
+# 2. All sensitive data (passwords, keys, tokens) should be set as 
+#    environment variables in the Render.com dashboard, not in this file
+#
+# 3. The PostgreSQL and Redis services will be auto-created with managed backups
+#
+# 4. Render auto-deploys on git push to your linked branch
+#
+# 5. Logs are available in Render dashboard and persisted to /app/logs disk
+#
+# 6. For SSL/HTTPS: Render provides free auto-renewing SSL certificates
+#    Set USE_HTTPS=true and SESSION_COOKIE_SECURE=true
+#
+# 7. To scale up: Change plan from "starter" to "standard" or "pro"
+#    Each plan includes more resources and better uptime SLA

@@ -1,0 +1,892 @@
+<!-- Analytics Dashboard Widgets -->
+<div id="analytics-widgets-section" class="mb-6">
+    <div class="bg-gradient-to-r from-purple-500 to-indigo-600 p-4 sm:p-6 rounded-lg shadow-xl text-white mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold mb-2">Analytics Dashboard</h2>
+                <p class="text-purple-100">Track your academic performance and insights</p>
+            </div>
+            <div class="mt-4 sm:mt-0 flex space-x-2">
+                <button id="refresh-analytics-btn" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 flex items-center">
+                    <i class="fas fa-sync mr-2"></i>Refresh
+                </button>
+                <a href="{{ url_for('main.notifications') }}" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-300 flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i>Full Analytics
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="performance-metrics">
+        <!-- Current GPA Card -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Current GPA</h3>
+                <div class="p-2 bg-blue-100 rounded-full">
+                    <i class="fas fa-graduation-cap text-blue-600"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <p class="text-2xl font-semibold text-gray-900" id="current-gpa">--</p>
+                <p class="ml-2 text-sm font-medium" id="gpa-trend">
+                    <span class="text-gray-500">Loading...</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Completion Rate Card -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Completion Rate</h3>
+                <div class="p-2 bg-green-100 rounded-full">
+                    <i class="fas fa-check-circle text-green-600"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <p class="text-2xl font-semibold text-gray-900" id="completion-rate">--</p>
+                <p class="ml-2 text-sm font-medium" id="completion-trend">
+                    <span class="text-gray-500">Loading...</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Study Efficiency Card -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Study Efficiency</h3>
+                <div class="p-2 bg-purple-100 rounded-full">
+                    <i class="fas fa-brain text-purple-600"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <p class="text-2xl font-semibold text-gray-900" id="study-efficiency">--</p>
+                <p class="ml-2 text-sm font-medium" id="efficiency-trend">
+                    <span class="text-gray-500">Loading...</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Risk Assessment Card -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Risk Level</h3>
+                <div class="p-2 bg-yellow-100 rounded-full">
+                    <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <p class="text-2xl font-semibold text-gray-900" id="risk-level">--</p>
+                <p class="ml-2 text-sm font-medium" id="risk-description">
+                    <span class="text-gray-500">Loading...</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Grade Trend Chart -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Grade Trend</h3>
+                <div class="flex space-x-2">
+                    <button class="chart-period-btn text-xs px-3 py-1 bg-blue-100 text-blue-600 rounded-md" data-period="7d">7D</button>
+                    <button class="chart-period-btn text-xs px-3 py-1 text-gray-600 rounded-md" data-period="30d">30D</button>
+                    <button class="chart-period-btn text-xs px-3 py-1 text-gray-600 rounded-md" data-period="semester">Semester</button>
+                </div>
+            </div>
+            <div class="h-48 bg-gray-50 rounded-lg" id="grade-trend-chart-container">
+                <canvas id="grade-trend-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Performance Distribution Chart -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Performance Distribution</h3>
+                <i class="fas fa-info-circle text-gray-400 cursor-help" title="Distribution of your assignment grades"></i>
+            </div>
+            <div class="h-48 bg-gray-50 rounded-lg" id="performance-distribution-chart-container">
+                <canvas id="performance-distribution-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insights and Recommendations -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Key Insights -->
+        <div class="lg:col-span-2 bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                Key Insights
+            </h3>
+            <div id="analytics-insights" class="space-y-3">
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-spinner fa-spin text-gray-400 mt-1"></i>
+                    <p class="text-gray-500">Loading insights...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <i class="fas fa-rocket text-blue-500 mr-2"></i>
+                Quick Actions
+            </h3>
+            <div class="space-y-2">
+                <button id="export-report-btn" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium py-2 px-3 rounded-lg border border-blue-200 transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-file-export mr-2"></i>
+                    Export Report
+                </button>
+                <button id="predict-grades-btn" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 text-sm font-medium py-2 px-3 rounded-lg border border-purple-200 transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-crystal-ball mr-2"></i>
+                    Predict Final Grades
+                </button>
+                <button id="view-recommendations-btn" class="w-full bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium py-2 px-3 rounded-lg border border-green-200 transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-bullseye mr-2"></i>
+                    Study Recommendations
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Feed -->
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Recent Analytics Activity</h3>
+            <button id="clear-activity-btn" class="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+        </div>
+        <div id="analytics-activity-feed" class="space-y-3 max-h-48 overflow-y-auto">
+            <div class="flex items-center space-x-3 text-gray-500">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p class="text-sm">Loading recent activity...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize analytics widgets
+    initializeAnalyticsWidgets();
+    
+    // Set up event listeners
+    setupAnalyticsEventListeners();
+});
+
+function initializeAnalyticsWidgets() {
+    // Load initial analytics data
+    loadPerformanceMetrics();
+    loadAnalyticsInsights();
+    loadActivityFeed();
+    
+    // Load charts if Chart.js is available
+    if (typeof Chart !== 'undefined') {
+        loadGradeTrendChart();
+        loadPerformanceDistributionChart();
+    } else {
+        // Fallback for when Chart.js is not loaded
+        loadSimpleCharts();
+    }
+}
+
+function setupAnalyticsEventListeners() {
+    // Refresh analytics button
+    document.getElementById('refresh-analytics-btn')?.addEventListener('click', function() {
+        this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Refreshing...';
+        this.disabled = true;
+        
+        // Refresh all data
+        Promise.all([
+            loadPerformanceMetrics(),
+            loadAnalyticsInsights(),
+            loadActivityFeed()
+        ]).then(() => {
+            this.innerHTML = '<i class="fas fa-sync mr-2"></i>Refresh';
+            this.disabled = false;
+        });
+    });
+    
+    // Export report button
+    document.getElementById('export-report-btn')?.addEventListener('click', function() {
+        exportAnalyticsReport();
+    });
+    
+    // Predict grades button
+    document.getElementById('predict-grades-btn')?.addEventListener('click', function() {
+        predictFinalGrades();
+    });
+    
+    // View recommendations button
+    document.getElementById('view-recommendations-btn')?.addEventListener('click', function() {
+        viewStudyRecommendations();
+    });
+    
+    // Chart period buttons
+    document.querySelectorAll('.chart-period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active state
+            document.querySelectorAll('.chart-period-btn').forEach(b => {
+                b.className = 'chart-period-btn text-xs px-3 py-1 text-gray-600 rounded-md';
+            });
+            this.className = 'chart-period-btn text-xs px-3 py-1 bg-blue-100 text-blue-600 rounded-md';
+            
+            // Reload chart with new period
+            loadGradeTrendChart(this.dataset.period);
+        });
+    });
+}
+
+async function loadPerformanceMetrics() {
+    try {
+        const response = await fetch('/api/analytics/performance');
+        
+        // Check if response is HTML (redirect to login)
+        const contentType = response.headers.get('content-type');
+        if (!response.ok || !contentType || !contentType.includes('application/json')) {
+            console.log('Not authenticated for performance metrics, skipping...');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Normalize different backend response shapes
+        let metrics = null;
+        if (data && data.status === 'success' && data.data) {
+            metrics = data.data;
+        } else if (data && data.performance_snapshot) {
+            // Map server response to UI-friendly structure
+            metrics = {};
+            metrics.current_gpa = data.performance_snapshot.overall_gpa ?? null;
+            metrics.gpa_trend = data.performance_snapshot.trend_direction
+                ? { direction: data.performance_snapshot.trend_direction, value: null }
+                : null;
+
+            // Derive average completion rate if available
+            if (data.performance_snapshot.completion_rates) {
+                const rates = Object.values(data.performance_snapshot.completion_rates);
+                metrics.completion_rate = rates.length ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : null;
+            } else if (data.metrics && data.metrics.completion_rate) {
+                metrics.completion_rate = data.metrics.completion_rate;
+            }
+
+            metrics.study_efficiency = (data.metrics && data.metrics.study_efficiency) || null;
+            metrics.efficiency_trend = (data.metrics && data.metrics.efficiency_trend) || null;
+
+            metrics.risk_level = (data.dashboard_data && data.dashboard_data.performance_summary && data.dashboard_data.performance_summary.courses_at_risk > 0) ? 'Medium' : (data.performance_snapshot && data.performance_snapshot.risk_courses && data.performance_snapshot.risk_courses.length ? 'High' : 'Low');
+            metrics.risk_description = null;
+        } else if (data && data.metrics) {
+            metrics = {
+                current_gpa: data.metrics.overall_gpa || null,
+                gpa_trend: data.metrics.gpa_trend || null,
+                completion_rate: data.metrics.completion_rate || null,
+                completion_trend: data.metrics.completion_trend || null,
+                study_efficiency: data.metrics.study_efficiency || null,
+                efficiency_trend: data.metrics.efficiency_trend || null,
+                risk_level: data.metrics.risk_level || null,
+                risk_description: data.metrics.risk_description || null,
+            };
+        }
+        
+        if (metrics) {
+            updatePerformanceMetricsUI(metrics);
+        } else {
+            console.error('Failed to load performance metrics:', data?.error || data);
+            showMetricsError();
+        }
+    } catch (error) {
+        console.error('Error loading performance metrics:', error);
+        showMetricsError();
+    }
+}
+
+function updatePerformanceMetricsUI(metrics) {
+    // Update GPA
+    const gpaElement = document.getElementById('current-gpa');
+    const gpaTrendElement = document.getElementById('gpa-trend');
+    if (gpaElement && gpaTrendElement) {
+        gpaElement.textContent = metrics.current_gpa?.toFixed(2) || '--';
+        gpaTrendElement.innerHTML = getTrendHTML(metrics.gpa_trend);
+    }
+    
+    // Update completion rate
+    const completionElement = document.getElementById('completion-rate');
+    const completionTrendElement = document.getElementById('completion-trend');
+    if (completionElement && completionTrendElement) {
+        completionElement.textContent = metrics.completion_rate ? `${Math.round(metrics.completion_rate)}%` : '--';
+        completionTrendElement.innerHTML = getTrendHTML(metrics.completion_trend);
+    }
+    
+    // Update study efficiency
+    const efficiencyElement = document.getElementById('study-efficiency');
+    const efficiencyTrendElement = document.getElementById('efficiency-trend');
+    if (efficiencyElement && efficiencyTrendElement) {
+        efficiencyElement.textContent = metrics.study_efficiency || '--';
+        efficiencyTrendElement.innerHTML = getTrendHTML(metrics.efficiency_trend);
+    }
+    
+    // Update risk level
+    const riskElement = document.getElementById('risk-level');
+    const riskDescElement = document.getElementById('risk-description');
+    if (riskElement && riskDescElement) {
+        riskElement.textContent = metrics.risk_level || '--';
+        riskDescElement.innerHTML = getRiskHTML(metrics.risk_level, metrics.risk_description);
+    }
+}
+
+function getTrendHTML(trend) {
+    if (!trend) return '<span class="text-gray-500">--</span>';
+    
+    const direction = trend.direction;
+    const value = trend.value;
+    
+    if (direction === 'up') {
+        return `<span class="text-green-500"><i class="fas fa-arrow-up"></i> +${value}</span>`;
+    } else if (direction === 'down') {
+        return `<span class="text-red-500"><i class="fas fa-arrow-down"></i> -${value}</span>`;
+    } else {
+        return `<span class="text-gray-500"><i class="fas fa-minus"></i> ${value || 'Stable'}</span>`;
+    }
+}
+
+function getRiskHTML(level, description) {
+    const colors = {
+        'Low': 'text-green-500',
+        'Medium': 'text-yellow-500',
+        'High': 'text-red-500'
+    };
+    
+    const color = colors[level] || 'text-gray-500';
+    return `<span class="${color}">${description || level || '--'}</span>`;
+}
+
+async function loadAnalyticsInsights() {
+    try {
+        const response = await fetch('/api/analytics/insights');
+
+        // Check if response is HTML or missing JSON
+        const contentType = response.headers.get('content-type');
+        if (!response.ok || !contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.warn('Skipping insights load (non-JSON response)', text?.slice(0, 200));
+            return;
+        }
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            console.error('Failed to parse insights response', parseError);
+            document.getElementById('analytics-insights').innerHTML = '<p class="text-gray-500 text-sm">Unable to load insights</p>';
+            return;
+        }
+
+        // Normalize various response shapes
+        let insightsList = null;
+        if (data && data.status === 'success' && Array.isArray(data.insights)) {
+            insightsList = data.insights;
+        } else if (Array.isArray(data.insights)) {
+            insightsList = data.insights;
+        } else if (data && data.data && Array.isArray(data.data.insights)) {
+            insightsList = data.data.insights;
+        } else if (Array.isArray(data)) {
+            // Server returned the array directly
+            insightsList = data;
+        } else if (data && data.insights && typeof data.insights === 'string') {
+            // Single insight as string
+            insightsList = [data.insights];
+        }
+
+        if (insightsList && insightsList.length > 0) {
+            updateInsightsUI(insightsList);
+        } else {
+            const fallbackMessage = data?.error || data?.message || JSON.stringify(data || {});
+            console.error('Failed to load insights:', fallbackMessage);
+            document.getElementById('analytics-insights').innerHTML = '<p class="text-gray-500 text-sm">Unable to load insights</p>';
+        }
+    } catch (error) {
+        console.error('Error loading insights:', error);
+        document.getElementById('analytics-insights').innerHTML = '<p class="text-gray-500 text-sm">Unable to load insights</p>';
+    }
+}
+
+function updateInsightsUI(insights) {
+    const container = document.getElementById('analytics-insights');
+    if (!container) return;
+    
+    if (!insights || insights.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No insights available</p>';
+        return;
+    }
+    
+    container.innerHTML = insights.map(insight => `
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+            <p class="text-sm text-gray-700">${insight}</p>
+        </div>
+    `).join('');
+}
+
+async function loadActivityFeed() {
+    try {
+        const response = await fetch('/api/analytics/notifications/activity');
+        
+        // Check if response is HTML (redirect to login)
+        const contentType = response.headers.get('content-type');
+        if (!response.ok || !contentType || !contentType.includes('application/json')) {
+            console.log('Not authenticated for activity feed, skipping...');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            updateActivityFeedUI(data.activities);
+        } else {
+            console.error('Failed to load activity feed:', data.error);
+            document.getElementById('analytics-activity-feed').innerHTML = '<p class="text-gray-500 text-sm">Unable to load activity</p>';
+        }
+    } catch (error) {
+        console.error('Error loading activity feed:', error);
+        document.getElementById('analytics-activity-feed').innerHTML = '<p class="text-gray-500 text-sm">Unable to load activity</p>';
+    }
+}
+
+function updateActivityFeedUI(activities) {
+    const container = document.getElementById('analytics-activity-feed');
+    if (!container) return;
+    
+    if (!activities || activities.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No recent activity</p>';
+        return;
+    }
+    
+    container.innerHTML = activities.map(activity => `
+        <div class="flex items-center space-x-3 text-sm">
+            <i class="fas ${getActivityIcon(activity.type)} text-blue-500"></i>
+            <span class="text-gray-700">${activity.description}</span>
+            <span class="text-gray-400 text-xs ml-auto">${formatTime(activity.timestamp)}</span>
+        </div>
+    `).join('');
+}
+
+function getActivityIcon(type) {
+    const icons = {
+        'grade_update': 'fa-edit',
+        'prediction': 'fa-crystal-ball',
+        'export': 'fa-download',
+        'sync': 'fa-sync'
+    };
+    return icons[type] || 'fa-info-circle';
+}
+
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return `${Math.floor(diffMins / 1440)}d ago`;
+}
+
+function loadSimpleCharts() {
+    // Simple chart implementation without Chart.js
+    loadSimpleGradeTrendChart();
+    loadSimplePerformanceChart();
+}
+
+async function loadSimpleGradeTrendChart() {
+    const container = document.getElementById('grade-trend-chart');
+    if (!container) return;
+    
+    try {
+        const response = await fetch('/api/analytics/trends?period=7d');
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.trends && data.trends.length > 0) {
+            // Create simple bar chart
+            const maxValue = Math.max(...data.trends.map(t => t.value));
+            const bars = data.trends.map(trend => {
+                const height = (trend.value / maxValue) * 100;
+                return `
+                    <div class="flex flex-col items-center">
+                        <div class="bg-blue-500 rounded-t" style="height: ${height}%; width: 20px; min-height: 4px;"></div>
+                        <span class="text-xs text-gray-500 mt-1">${trend.label}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = `
+                <div class="flex items-end justify-center space-x-2 h-full px-4">
+                    ${bars}
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center">No trend data available</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p class="text-red-500 text-center">Error loading chart</p>';
+    }
+}
+
+async function loadSimplePerformanceChart() {
+    const container = document.getElementById('performance-distribution-chart');
+    if (!container) return;
+    
+    try {
+        const response = await fetch('/api/analytics/performance-distribution');
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.distribution) {
+            // Create simple donut chart representation
+            const total = Object.values(data.distribution).reduce((sum, val) => sum + val, 0);
+            let html = '<div class="space-y-2">';
+            
+            Object.entries(data.distribution).forEach(([grade, count]) => {
+                const percentage = total > 0 ? (count / total * 100) : 0;
+                html += `
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">${grade}</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-16 bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500">${count}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center">No distribution data available</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p class="text-red-500 text-center">Error loading chart</p>';
+    }
+}
+
+// Chart.js implementation
+let gradeTrendChart = null;
+let performanceDistributionChart = null;
+
+async function loadGradeTrendChart(period = '7d') {
+    const canvas = document.getElementById('grade-trend-chart');
+    if (!canvas || typeof Chart === 'undefined') {
+        return loadSimpleGradeTrendChart();
+    }
+    
+    try {
+        // Destroy existing chart
+        if (gradeTrendChart) {
+            gradeTrendChart.destroy();
+        }
+        
+        const response = await fetch(`/api/analytics/trends?period=${period}`);
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.trends) {
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Prepare data for Chart.js
+        const labels = data.trends.map(trend => trend.label);
+        const values = data.trends.map(trend => trend.value);
+        const colors = data.trends.map(trend => {
+            if (trend.value >= 90) return 'rgba(34, 197, 94, 0.8)'; // Green
+            if (trend.value >= 80) return 'rgba(59, 130, 246, 0.8)'; // Blue
+            if (trend.value >= 70) return 'rgba(245, 158, 11, 0.8)'; // Yellow
+            return 'rgba(239, 68, 68, 0.8)'; // Red
+        });
+        
+        gradeTrendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Grade Trend',
+                    data: values,
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: colors,
+                    pointBorderColor: 'rgba(59, 130, 246, 1)',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return `Grade: ${context.parsed.y.toFixed(1)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            color: 'rgb(107, 114, 128)',
+                            font: {
+                                size: 12
+                            },
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading grade trend chart:', error);
+        loadSimpleGradeTrendChart();
+    }
+}
+
+async function loadPerformanceDistributionChart() {
+    const canvas = document.getElementById('performance-distribution-chart');
+    if (!canvas || typeof Chart === 'undefined') {
+        return loadSimplePerformanceChart();
+    }
+    
+    try {
+        // Destroy existing chart
+        if (performanceDistributionChart) {
+            performanceDistributionChart.destroy();
+        }
+        
+        const response = await fetch('/api/analytics/performance-distribution');
+        const data = await response.json();
+        
+        if (data.status !== 'success' || !data.distribution) {
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Prepare data for Chart.js
+        const gradeRanges = ['A (90-100)', 'B (80-89)', 'C (70-79)', 'D (60-69)', 'F (0-59)'];
+        const distribution = data.distribution;
+        
+        const labels = [];
+        const values = [];
+        const backgroundColors = [];
+        
+        gradeRanges.forEach(range => {
+            const key = range.charAt(0); // Get the letter grade
+            if (distribution[key] && distribution[key] > 0) {
+                labels.push(range);
+                values.push(distribution[key]);
+                
+                // Color coding for grades
+                switch(key) {
+                    case 'A': backgroundColors.push('rgba(34, 197, 94, 0.8)'); break;
+                    case 'B': backgroundColors.push('rgba(59, 130, 246, 0.8)'); break;
+                    case 'C': backgroundColors.push('rgba(245, 158, 11, 0.8)'); break;
+                    case 'D': backgroundColors.push('rgba(249, 115, 22, 0.8)'); break;
+                    case 'F': backgroundColors.push('rgba(239, 68, 68, 0.8)'); break;
+                    default: backgroundColors.push('rgba(107, 114, 128, 0.8)'); break;
+                }
+            }
+        });
+        
+        if (values.length === 0) {
+            // Show placeholder when no data
+            ctx.fillStyle = 'rgb(107, 114, 128)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('No grade data available', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+        
+        performanceDistributionChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: backgroundColors,
+                    borderColor: 'white',
+                    borderWidth: 2,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            font: {
+                                size: 12
+                            },
+                            color: 'rgb(107, 114, 128)'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                return `${context.label}: ${context.parsed} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading performance distribution chart:', error);
+        loadSimplePerformanceChart();
+    }
+}
+
+function showMetricsError() {
+    ['current-gpa', 'completion-rate', 'study-efficiency', 'risk-level'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = 'Error';
+    });
+}
+
+async function exportAnalyticsReport() {
+    try {
+        const button = document.getElementById('export-report-btn');
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Exporting...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/analytics/export', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ format: 'pdf' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Show success message
+            showNotification('Export started! You will receive an email when ready.', 'success');
+        } else {
+            showNotification('Export failed: ' + data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Export failed: ' + error.message, 'error');
+    } finally {
+        const button = document.getElementById('export-report-btn');
+        button.innerHTML = '<i class="fas fa-file-export mr-2"></i>Export Report';
+        button.disabled = false;
+    }
+}
+
+async function predictFinalGrades() {
+    try {
+        const button = document.getElementById('predict-grades-btn');
+        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Predicting...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/analytics/predictions');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Show predictions modal or redirect
+            window.location.href = '/analytics#predictions';
+        } else {
+            showNotification('Prediction failed: ' + data.error, 'error');
+        }
+    } catch (error) {
+        showNotification('Prediction failed: ' + error.message, 'error');
+    } finally {
+        const button = document.getElementById('predict-grades-btn');
+        button.innerHTML = '<i class="fas fa-crystal-ball mr-2"></i>Predict Final Grades';
+        button.disabled = false;
+    }
+}
+
+function viewStudyRecommendations() {
+    window.location.href = '/analytics#recommendations';
+}
+
+function showNotification(message, type = 'info') {
+    // Create and show notification
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+        type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+        type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
+        'bg-blue-100 text-blue-800 border border-blue-200'
+    }`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${
+                type === 'success' ? 'fa-check-circle' :
+                type === 'error' ? 'fa-exclamation-circle' :
+                'fa-info-circle'
+            } mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+</script>

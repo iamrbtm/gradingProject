@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Audit Trail: {{ course.name }}</h2>
+            <a href="{{ url_for('main.view_course', course_id=course.id) }}" 
+               class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg inline-flex items-center">
+                <i class="fa fa-arrow-left mr-2"></i> Back to Course
+            </a>
+        </div>
+
+        {% if audit_logs %}
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b">
+                <h5 class="text-lg font-semibold text-gray-800">Assignment Change History</h5>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-800 text-white">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Date/Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Assignment</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Action</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Field</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Old Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">New Value</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for log in audit_logs %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-500">
+                                    {{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ log.assignment_name }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if log.action == 'marked_completed' %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                        Marked Complete
+                                    </span>
+                                {% elif log.action == 'marked_incomplete' %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Marked Incomplete
+                                    </span>
+                                {% elif log.action == 'score_updated' %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        Score Updated
+                                    </span>
+                                {% elif log.action == 'due_date_updated' %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                        Due Date Updated
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        {{ log.action.replace('_', ' ').title() }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <code class="text-sm bg-gray-100 px-2 py-1 rounded">{{ log.field_changed }}</code>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if log.old_value %}
+                                    <span class="text-sm text-gray-500">{{ log.old_value }}</span>
+                                {% else %}
+                                    <span class="text-sm text-gray-400 italic">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if log.new_value %}
+                                    <span class="text-sm font-medium text-gray-900">{{ log.new_value }}</span>
+                                {% else %}
+                                    <span class="text-sm text-gray-400 italic">None</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fa fa-info-circle text-blue-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-blue-700">
+                        No audit log entries found for this course. Changes to assignments will appear here once they are made.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-8">
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h6 class="text-lg font-semibold text-gray-800 mb-3">About the Audit Trail</h6>
+                <p class="text-sm text-gray-600 mb-3">
+                    This audit trail tracks all changes made to assignments in this course, including:
+                </p>
+                <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+                    <li>Completion status changes (checkbox toggles)</li>
+                    <li>Score and max score updates</li>
+                    <li>Due date modifications</li>
+                    <li>Assignment name changes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

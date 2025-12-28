@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-xl border border-gray-200">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Settings</h1>
+
+    <form method="POST" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <!-- Email Settings -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Email Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="smtp_server" class="block text-sm font-medium text-gray-700">SMTP Server</label>
+                    <input type="text" id="smtp_server" name="smtp_server" value="{{ mail_server }}"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="smtp_port" class="block text-sm font-medium text-gray-700">SMTP Port</label>
+                    <input type="number" id="smtp_port" name="smtp_port" value="{{ mail_port }}"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="smtp_username" class="block text-sm font-medium text-gray-700">SMTP Username</label>
+                    <input type="text" id="smtp_username" name="smtp_username" value="{{ mail_username }}"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="smtp_password" class="block text-sm font-medium text-gray-700">SMTP Password</label>
+                    <input type="password" id="smtp_password" name="smtp_password" value="{{ mail_password }}"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="mt-4">
+                <label class="flex items-center">
+                    <input type="checkbox" name="smtp_tls" {% if mail_use_tls %}checked{% endif %}
+                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2 text-sm text-gray-700">Use TLS</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Canvas Integration -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Canvas Integration</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <div>
+                    <label for="canvas_base_url" class="block text-sm font-medium text-gray-700">Canvas Base URL</label>
+                    <input type="url" id="canvas_base_url" name="canvas_base_url" value="{{ canvas_base_url }}"
+                           placeholder="https://your-school.instructure.com"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-xs text-gray-500">Your Canvas instance URL</p>
+                </div>
+                <div>
+                    <label for="canvas_access_token" class="block text-sm font-medium text-gray-700">Canvas Access Token</label>
+                    <input type="password" id="canvas_access_token" name="canvas_access_token" value="{{ canvas_access_token }}"
+                           placeholder="Enter your Canvas API token"
+                           class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-xs text-gray-500">Generate this from Canvas Account Settings → Approved Integrations</p>
+                </div>
+                {% if canvas_last_sync %}
+                <div class="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                    <p class="text-sm text-green-700">Last sync: {{ canvas_last_sync.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Notification Preferences -->
+        <div class="bg-gray-50 p-4 rounded-md">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Notification Preferences</h2>
+            <div class="space-y-3">
+                <label class="flex items-center">
+                    <input type="checkbox" name="email_reminders" {% if email_reminders %}checked{% endif %}
+                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2 text-sm text-gray-700">Email reminders for upcoming assignments</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="dashboard_notifications" {% if dashboard_notifications %}checked{% endif %}
+                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <span class="ml-2 text-sm text-gray-700">Dashboard notifications for overdue assignments</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-semibold transition duration-300">
+                Save Settings
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

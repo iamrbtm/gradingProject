@@ -1,0 +1,71 @@
+# ===========================================
+# Flask Grade Tracker - Optimized Dockerfile for Render.com
+# ===========================================
+# This Dockerfile is optimized for:
+# - Minimal image size
+# - Fast build times
+# - Single service (web only)
+# - External PostgreSQL and Redis on Render
+# ===========================================
+
+# Use Python 3.11 slim image
+FROM python:3.11-slim-bookworm
+
+# Set metadata
+LABEL maintainer="your-email@example.com"
+LABEL description="Flask Grade Tracker - Optimized for Render.com"
+
+# Set environment variables for Python
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_APP=app.py \
+    FLASK_ENV=production \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Set working directory
+WORKDIR /app
+
+# Install minimal system dependencies
+# Only install what's necessary for the application
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libmariadb-dev \
+    pkg-config \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy requirements first (better Docker layer caching)
+COPY --chown=appuser:appuser requirements.txt .
+
+# Install Python dependencies
+# Use --no-deps to avoid installing unnecessary dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Create necessary directories
+RUN mkdir -p logs static/css static/js \
+    && chmod -R 755 static \
+    && chmod -R 755 logs \
+    && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
+
+# Expose port (Render will set PORT environment variable)
+EXPOSE 5000
+
+# Start command - optimized for Render.com
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 3 --worker-class gevent --timeout 120 --access-logfile - --error-logfile - app:app"]

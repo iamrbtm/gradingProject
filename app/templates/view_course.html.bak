@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}Course: {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-xl border border-gray-200 print:bg-transparent print:shadow-none print:border-none">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Course: {{ course.name }} ({{ course.credits }} credits)</h1>
+        <div class="relative">
+            <button id="courseSelectorBtn" class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full transition duration-300 shadow-sm w-10 h-10 flex items-center justify-center">
+                <i class="fas fa-list-ul"></i>
+            </button>
+            <div id="courseSelectorPopover" class="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-10 hidden">
+                <ul class="py-1">
+                    {% for term_course in term_courses %}
+                        {% if term_course.id != course.id %}
+                            <li>
+                                <a href="{{ url_for('view_course', course_id=term_course.id) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ term_course.name }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <p class="text-lg text-gray-700 mb-6">Term: <a href="{{ url_for('view_term', term_id=course.term.id) }}" class="text-blue-600 hover:underline">{{ course.term.nickname }}</a></p>
+
+    <div class="mb-8 p-4 bg-blue-50 rounded-md border border-blue-200 print:bg-transparent print:border-none">
+        <h2 class="text-xl font-semibold text-blue-800 mb-2">Current Course Performance</h2>
+        <p class="text-lg text-blue-700">Overall Course Grade: <span class="font-bold">{% if overall_grade_percentage is not none %}{{ overall_grade_percentage|round(2) }}%{% else %}N/A{% endif %}</span></p>
+        <p class="text-lg text-blue-700">GPA Contribution: <span class="font-bold">{% if gpa_contribution is not none %}{{ gpa_contribution|round(2) }}{% else %}N/A{% endif %}</span></p>
+    </div>
+
+    <div class="mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add New Assignment</h2>
+        <form action="{{ url_for('add_assignment', course_id=course.id) }}" method="POST" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="assignment_name" class="block text-sm font-medium text-gray-700">Assignment Name:</label>
+                    <input type="text" id="assignment_name" name="name" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div id="category_field" style="display: {% if is_weighted or course.is_category %}block{% else %}none{% endif %};">
+                    <label for="category_id" class="block text-sm font-medium text-gray-700">Category (Optional):</label>
+                    <select id="category_id" name="category_id" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <option value="">-- Select Category --</option>
+                        {% if is_weighted %}
+                            {% for category in grade_categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        {% elif course.is_category %}
+                            {% for category in grade_categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="due_date" class="block text-sm font-medium text-gray-700">Due Date (Optional):</label>
+                    <input type="date" id="due_date" name="due_date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="score" class="block text-sm font-medium text-gray-700">Score (Optional):</label>
+                    <input type="number" step="0.01" id="score" name="score" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="max_score" class="block text-sm font-medium text-gray-700">Max Score:</label>
+                    <input type="number" step="0.01" id="max_score" name="max_score" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-md font-semibold transition duration-300 ease-in-out shadow-md">Add Assignment</button>
+            </div>
+        </form>
+    </div>
+
+    {% if is_weighted or course.is_category %}
+    <div class="mb-8 mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Manage Categories</h2>
+        {% if is_weighted %}
+            <div class="mb-4 text-sm flex items-center space-x-3">
+                <p>Total weight:
+                    <span class="font-semibold {% if total_weight_pct == 100 %}text-green-700{% elif total_weight_pct < 100 %}text-yellow-700{% else %}text-red-700{% endif %}">
+                        {{ total_weight_pct|default(0)|round(2) }}%
+                    </span>
+                </p>
+                {% if total_weight_pct != 100 %}
+                    <span class="inline-flex items-center px-2 py-1 rounded text-white text-xs font-semibold {% if total_weight_pct < 100 %}bg-yellow-600{% else %}bg-red-600{% endif %}">
+                        {% if total_weight_pct < 100 %}
+                            Weights total less than 100% — grades normalized over active categories
+                        {% else %}
+                            Weights exceed 100% — grades normalized over active categories
+                        {% endif %}
+                    </span>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200 mb-4">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b text-left">Name</th>
+                        {% if is_weighted %}<th class="py-2 px-4 border-b text-left">Weight (%)</th>{% endif %}
+                        <th class="py-2 px-4 border-b text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in grade_categories %}
+                    <tr>
+                        <td class="py-2 px-4 border-b">
+                            <form action="{{ url_for('update_category', course_id=course.id, category_id=c.id) }}" method="POST" class="flex items-center space-x-2">
+                                <input type="text" name="name" value="{{ c.name }}" required class="w-full p-2 border border-gray-300 rounded-md">
+                                {% if is_weighted %}
+                                <input type="number" name="weight" step="0.01" min="0" max="100" value="{{ (c.weight * 100)|round(2) }}" required class="w-28 p-2 border border-gray-300 rounded-md">
+                                {% endif %}
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md">Save</button>
+                            </form>
+                        </td>
+                        {% if is_weighted %}<td class="py-2 px-4 border-b">{{ (c.weight * 100)|round(2) }}%</td>{% endif %}
+                        <td class="py-2 px-4 border-b">
+                            <form action="{{ url_for('delete_category', course_id=course.id, category_id=c.id) }}" method="POST" onsubmit="return confirm('Delete this category? Assignments will be uncategorized.');">
+                                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-700 mb-2">Add Category</h3>
+        <form action="{{ url_for('create_category', course_id=course.id) }}" method="POST" class="flex items-end space-x-3">
+            <div>
+                <label class="block text-sm">Name</label>
+                <input type="text" name="name" required class="p-2 border border-gray-300 rounded-md">
+            </div>
+            {% if is_weighted %}
+            <div>
+                <label class="block text-sm">Weight (%)</label>
+                <input type="number" name="weight" step="0.01" min="0" max="100" required class="p-2 border border-gray-300 rounded-md">
+            </div>
+            {% endif %}
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Add</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="mb-8 mt-8 pt-6 border-t border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Assignments</h2>
+<form action="{{ url_for('import_assignments', course_id=course.id) }}" method="post" enctype="multipart/form-data" class="mb-4">
+    <label for="file" class="block text-sm font-medium text-gray-700">Import Assignments (CSV/JSON):</label>
+    <div class="flex items-center space-x-4 mt-2">
+        <input type="file" name="file" id="file" accept=".csv,.json" required class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer focus:outline-none">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold transition duration-300 ease-in-out shadow-md">Import</button>
+    </div>
+</form>
+        <table class="min-w-full bg-white border border-gray-200" id="assignmentsTable">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b text-left">Assignment</th>
+                    <th class="py-2 px-4 border-b text-left">Due Date</th>
+                    <th class="py-2 px-4 border-b text-left">Score</th>
+                    <th class="py-2 px-4 border-b text-left">Max Score</th>
+                    <th class="py-2 px-4 border-b text-left">Percentage</th>
+                    <th class="py-2 px-4 border-b text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if course.is_category %}
+                    {% for category in grade_categories %}
+                        <tr class="bg-purple-200 droptarget" data-category-id="{{ category.id }}">
+                            <td class="py-2 px-4 font-bold" colspan="6">{{ category.name }} <span class="text-xs text-gray-600">(drop assignments here)</span></td>
+                        </tr>
+                        {% for assignment in assignments_by_category[category.id] %}
+                            <tr>
+                                <td class="py-2 px-4 border-b"><span class="cursor-move mr-2 text-gray-400" aria-hidden="true">⋮⋮</span>{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 px-4 border-b">
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="text-yellow-500 hover:text-yellow-700 edit-grade-btn"
+                                                data-assignment-id="{{ assignment.id }}"
+                                                data-assignment-name="{{ assignment.name }}"
+                                                data-assignment-max-score="{{ assignment.max_score }}"
+                                                data-assignment-score="{{ assignment.score if assignment.score is not none else '' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this assignment?');">
+                                            <button type="submit" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    <tr class="bg-purple-200 droptarget" data-category-id="">
+                        <td class="py-2 px-4 font-bold" colspan="6">Uncategorized <span class="text-xs text-gray-600">(drop assignments here)</span></td>
+                    </tr>
+                    {% if uncategorized_assignments %}
+                        {% for assignment in uncategorized_assignments %}
+                            <tr>
+                                <td class="py-2 px-4 border-b" title="Drag to move to another category"><span class="cursor-move mr-2 text-gray-400" aria-hidden="true">⋮⋮</span>{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 px-4 border-b">
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="text-yellow-500 hover:text-yellow-700 edit-grade-btn"
+                                                data-assignment-id="{{ assignment.id }}"
+                                                data-assignment-name="{{ assignment.name }}"
+                                                data-assignment-max-score="{{ assignment.max_score }}"
+                                                data-assignment-score="{{ assignment.score if assignment.score is not none else '' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this assignment?');">
+                                            <button type="submit" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endif %}
+                {% else %}
+                    {% for category in grade_categories %}
+                        <tr class="bg-blue-200">
+                            <td class="py-2 px-4 font-bold" colspan="5">{{ category.name }} ({{ (category.weight * 100)|round(2) }}%)</td>
+                            <td class="py-2 px-4 font-bold text-right">
+                                {% if category.id in category_averages %}
+                                    {{ category_averages[category.id]|round(2) }}%
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% for assignment in assignments_by_category[category.id] %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 px-4 border-b">
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="text-yellow-500 hover:text-yellow-700 edit-grade-btn"
+                                                data-assignment-id="{{ assignment.id }}"
+                                                data-assignment-name="{{ assignment.name }}"
+                                                data-assignment-max-score="{{ assignment.max_score }}"
+                                                data-assignment-score="{{ assignment.score if assignment.score is not none else '' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this assignment?');">
+                                            <button type="submit" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if uncategorized_assignments %}
+                        <tr class="bg-blue-200">
+                            <td class="py-2 px-4 font-bold" colspan="6">Uncategorized</td>
+                        </tr>
+                        {% for assignment in uncategorized_assignments %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 px-4 border-b">
+                                    <div class="flex space-x-2">
+                                        <button type="button" class="text-yellow-500 hover:text-yellow-700 edit-grade-btn"
+                                                data-assignment-id="{{ assignment.id }}"
+                                                data-assignment-name="{{ assignment.name }}"
+                                                data-assignment-max-score="{{ assignment.max_score }}"
+                                                data-assignment-score="{{ assignment.score if assignment.score is not none else '' }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <form action="{{ url_for('delete_assignment', assignment_id=assignment.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this assignment?');">
+                                            <button type="submit" class="text-red-500 hover:text-red-700"><i class="fas fa-trash-alt"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endif %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-8 pt-6 border-t border-gray-200 text-center">
+        <a href="{{ url_for('course_report', course_id=course.id) }}" class="inline-block bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md font-semibold transition duration-300 shadow-md print:hidden">
+            View Report
+        </a>
+        <a href="{{ url_for('view_term', term_id=course.term.id) }}" class="inline-block bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md font-semibold transition duration-300 shadow-md">
+            Back to Term
+        </a>
+    </div>
+</div>
+
+<div id="editGradeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalAssignmentName"></h3>
+            <div class="mt-2 px-7 py-3">
+                <form id="editGradeForm" method="POST">
+                    <input type="hidden" id="modalAssignmentId" name="assignment_id">
+                    <label for="modalScore" class="block text-sm font-medium text-gray-700 text-left">Score:</label>
+                    <input type="number" step="0.01" id="modalScore" name="score" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <p class="text-sm text-gray-500 text-left mt-1">Max Score: <span id="modalMaxScore"></span></p>
+                    <div class="items-center px-4 py-3">
+                        <button type="submit" id="updateGradeBtn" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-300">Update Grade</button>
+                        <button type="button" id="closeModalBtn" class="mt-3 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const editGradeModal = document.getElementById('editGradeModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const editGradeButtons = document.querySelectorAll('.edit-grade-btn');
+        const modalAssignmentName = document.getElementById('modalAssignmentName');
+        const modalAssignmentId = document.getElementById('modalAssignmentId');
+        const modalScore = document.getElementById('modalScore');
+        const modalMaxScore = document.getElementById('modalMaxScore');
+        const editGradeForm = document.getElementById('editGradeForm');
+
+        editGradeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const assignmentId = this.dataset.assignmentId;
+                const assignmentName = this.dataset.assignmentName;
+                const assignmentMaxScore = this.dataset.assignmentMaxScore;
+                const assignmentScore = this.dataset.assignmentScore;
+
+                modalAssignmentName.textContent = `Edit Grade for ${assignmentName}`;
+                modalAssignmentId.value = assignmentId;
+                modalMaxScore.textContent = assignmentMaxScore;
+                modalScore.value = assignmentScore;
+                editGradeForm.action = `/assignment/${assignmentId}/update_score`;
+                editGradeModal.classList.remove('hidden');
+            });
+        });
+
+        closeModalBtn.addEventListener('click', function() {
+            editGradeModal.classList.add('hidden');
+        });
+
+        editGradeModal.addEventListener('click', function(event) {
+            if (event.target === editGradeModal) {
+                editGradeModal.classList.add('hidden');
+            }
+        });
+
+        editGradeForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(editGradeForm);
+            const assignmentId = modalAssignmentId.value;
+
+            fetch(`/assignment/${assignmentId}/update_score`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                    if (data.success) {
+                        // Update the row inline without reload
+                        const row = [...document.querySelectorAll('button.edit-grade-btn')]
+                          .find(b => b.dataset.assignmentId === assignmentId)?.closest('tr');
+                        if (row) {
+                            const scoreCell = row.children[2];
+                            const maxCell = row.children[3];
+                            const pctCell = row.children[4];
+                            const maxVal = parseFloat(maxCell.textContent);
+                            if (formData.get('score') === '' || formData.get('score') === null) {
+                                scoreCell.textContent = '--';
+                                pctCell.textContent = '--';
+                            } else {
+                                const newScore = parseFloat(formData.get('score'));
+                                scoreCell.textContent = Number.isInteger(newScore) ? newScore.toString() : newScore.toFixed(2);
+                                if (!isNaN(maxVal) && maxVal > 0) {
+                                    const pct = (newScore / maxVal) * 100;
+                                    pctCell.textContent = `${pct.toFixed(2)}%`;
+                                } else {
+                                    pctCell.textContent = '--';
+                                }
+                            }
+                        }
+                        editGradeModal.classList.add('hidden');
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the grade.');
+            });
+        });
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Drag and drop to move assignments between categories (and uncategorized)
+        let dragAssignmentId = null;
+        const table = document.getElementById('assignmentsTable');
+
+        // Mark assignment rows as draggable by selector based on edit buttons
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const editBtn = tr.querySelector('button.edit-grade-btn');
+            if (editBtn) {
+                tr.classList.add('draggable-assignment');
+                tr.setAttribute('draggable', 'true');
+                tr.dataset.assignmentId = editBtn.dataset.assignmentId;
+            }
+        });
+
+        // Set up drag events
+        table.addEventListener('dragstart', (e) => {
+            const row = e.target.closest('tr.draggable-assignment');
+            if (!row) return;
+            dragAssignmentId = row.dataset.assignmentId;
+            e.dataTransfer.effectAllowed = 'move';
+            row.classList.add('opacity-50');
+        });
+        table.addEventListener('dragend', (e) => {
+            const row = e.target.closest('tr.draggable-assignment');
+            if (row) row.classList.remove('opacity-50');
+            dragAssignmentId = null;
+        });
+
+        function setupDropRow(tr, categoryId) {
+            tr.addEventListener('dragover', (e) => {
+                if (dragAssignmentId) {
+                    e.preventDefault();
+                    tr.classList.add('ring-2', 'ring-purple-400');
+                }
+            });
+            tr.addEventListener('dragleave', () => tr.classList.remove('ring-2', 'ring-purple-400'));
+            tr.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                tr.classList.remove('ring-2', 'ring-purple-400');
+                if (!dragAssignmentId) return;
+                try {
+                    const resp = await fetch(`/assignment/${dragAssignmentId}/move_category`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category_id: categoryId })
+                    });
+                    const data = await resp.json();
+                    if (!data.success) {
+                        alert(`Move failed: ${data.message || 'Unknown error'}`);
+                        return;
+                    }
+                    // Move the row in DOM under the header row where dropped
+                    const row = table.querySelector(`tr.draggable-assignment[data-assignment-id="${dragAssignmentId}"]`);
+                    if (row) {
+                        // Insert after the header row (this drop target)
+                        tr.parentNode.insertBefore(row, tr.nextSibling);
+                    }
+                    // Update banner if present
+                    const perfBox = document.querySelector('.mb-8.p-4.bg-blue-50');
+                    if (perfBox && data.overall_grade_percentage !== undefined) {
+                        const spans = perfBox.querySelectorAll('span.font-bold');
+                        if (spans[0]) spans[0].textContent = `${(data.overall_grade_percentage ?? 0).toFixed(2)}%`;
+                        if (spans[1] && data.gpa_contribution !== undefined && data.gpa_contribution !== null) spans[1].textContent = `${Number(data.gpa_contribution).toFixed(2)}`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('An error occurred while moving the assignment.');
+                }
+            });
+        }
+
+        // Category headers as drop targets
+        document.querySelectorAll('tr.droptarget').forEach(tr => {
+            const raw = tr.dataset.categoryId;
+            const catId = raw === undefined || raw === null || raw === '' ? null : parseInt(raw, 10);
+            setupDropRow(tr, catId);
+        });
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const courseSelectorBtn = document.getElementById('courseSelectorBtn');
+        const courseSelectorPopover = document.getElementById('courseSelectorPopover');
+
+        courseSelectorBtn.addEventListener('click', function() {
+            courseSelectorPopover.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!courseSelectorBtn.contains(event.target) && !courseSelectorPopover.contains(event.target)) {
+                courseSelectorPopover.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+

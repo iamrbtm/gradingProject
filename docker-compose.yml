@@ -1,0 +1,248 @@
+# ===========================================
+# Flask Grade Tracker - Docker Compose
+# ===========================================
+# Complete container orchestration with:
+# - Flask web application
+# - MySQL database
+# - Redis for caching and sessions  
+# - Celery worker for background tasks
+# - Nginx reverse proxy
+# ===========================================
+
+services:
+  # ===========================================
+  # DATABASE SERVICES
+  # ===========================================
+  
+  mysql:
+    image: mysql:8.0
+    container_name: gradetracker-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_secure_password_123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-gradetracker}
+      MYSQL_USER: ${MYSQL_USER:-gradetracker_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secure_password_456}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - gradetracker-network
+
+  # ===========================================
+  # CACHE & SESSION STORE
+  # ===========================================
+  
+  redis:
+    image: redis:7-alpine
+    container_name: gradetracker-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - gradetracker-network
+
+  # ===========================================
+  # WEB APPLICATION
+  # ===========================================
+  
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: gradetracker-web
+    restart: unless-stopped
+    environment:
+      # Flask Configuration
+      FLASK_ENV: production
+      FLASK_APP: app.py
+      
+      # Database Configuration
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-gradetracker_user}:${MYSQL_PASSWORD:-secure_password_456}@mysql:3306/${MYSQL_DATABASE:-gradetracker}
+      
+      # Redis Configuration  
+      CACHE_TYPE: redis
+      CACHE_REDIS_URL: redis://redis:6379/0
+      RATELIMIT_STORAGE_URL: redis://redis:6379/1
+      
+      # Security
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-your-super-secret-key-change-in-production}
+      API_TOKEN_ENCRYPTION_KEY: fPuqZYe8Db5S8GyGNvgfEhn7i4QMwCrcKVAXR4tQsD0=
+      USE_HTTPS: ${USE_HTTPS:-false}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      
+      # Feature Flags
+      ENABLE_NOTIFICATIONS: ${ENABLE_NOTIFICATIONS:-true}
+      ENABLE_ANALYTICS: ${ENABLE_ANALYTICS:-true}
+      ENABLE_MOBILE_OPTIMIZATION: ${ENABLE_MOBILE_OPTIMIZATION:-true}
+      
+      # Email Configuration (Optional)
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USE_TLS: ${MAIL_USE_TLS:-true}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Matplotlib Configuration
+      MPLCONFIGDIR: /tmp/matplotlib
+      
+    ports:
+      - "5001:5000"
+    volumes:
+      # Application logs (including Canvas sync logs)
+      - ./logs:/app/logs
+      # Static files
+      - ./static:/app/static
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gradetracker-network
+
+  # ===========================================
+  # BACKGROUND TASK WORKER
+  # ===========================================
+  
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gradetracker-celery
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info --concurrency=4
+    environment:
+      # Same environment as web service
+      FLASK_ENV: production
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-gradetracker_user}:${MYSQL_PASSWORD:-secure_password_456}@mysql:3306/${MYSQL_DATABASE:-gradetracker}
+      CACHE_REDIS_URL: redis://redis:6379/0
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-your-super-secret-key-change-in-production}
+      API_TOKEN_ENCRYPTION_KEY: fPuqZYe8Db5S8GyGNvgfEhn7i4QMwCrcKVAXR4tQsD0=
+      
+      # Celery-specific
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      
+      # Matplotlib Configuration
+      MPLCONFIGDIR: /tmp/matplotlib
+      
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gradetracker-network
+
+  # ===========================================
+  # CELERY BEAT SCHEDULER (Optional)
+  # ===========================================
+  
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gradetracker-beat
+    restart: unless-stopped
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-gradetracker_user}:${MYSQL_PASSWORD:-secure_password_456}@mysql:3306/${MYSQL_DATABASE:-gradetracker}
+      CACHE_REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-your-super-secret-key-change-in-production}
+      API_TOKEN_ENCRYPTION_KEY: fPuqZYe8Db5S8GyGNvgfEhn7i4QMwCrcKVAXR4tQsD0=
+      
+      # Matplotlib Configuration
+      MPLCONFIGDIR: /tmp/matplotlib
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - gradetracker-network
+
+  # ===========================================
+  # REVERSE PROXY (Optional - for production)
+  # ===========================================
+  
+  nginx:
+    image: nginx:alpine
+    container_name: gradetracker-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./static:/app/static:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro  # SSL certificates if needed
+    depends_on:
+      - web
+    networks:
+      - gradetracker-network
+    profiles:
+      - production  # Only run with: docker-compose --profile production up
+
+# ===========================================
+# NETWORKS & VOLUMES
+# ===========================================
+
+networks:
+  gradetracker-network:
+    driver: bridge
+    name: gradetracker-network
+
+volumes:
+  mysql_data:
+    driver: local
+    name: gradetracker-mysql-data
+  redis_data:
+    driver: local
+    name: gradetracker-redis-data

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Course Report: {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white p-4 sm:p-6 rounded-lg shadow-xl border border-gray-200">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Course Report: {{ course.name }}</h1>
+
+    <!-- Mobile: Card view, Desktop: Table view -->
+    <div class="block sm:hidden">
+        <!-- Mobile Card Layout -->
+        {% if course.is_category %}
+            {% for category in grade_categories %}
+                <div class="bg-purple-100 p-3 rounded-lg mb-4 border border-purple-200">
+                    <h3 class="font-bold text-purple-800 mb-3">{{ category.name }}</h3>
+                    {% for assignment in assignments_by_category[category.id] %}
+                        <div class="bg-white p-3 rounded-md mb-2 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-gray-800 text-sm">{{ assignment.name }}</h4>
+                                <span class="text-sm font-bold text-gray-700">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(1) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                    <span class="font-medium">Due:</span>
+                                    <div>{{ assignment.due_date.strftime('%m/%d') if assignment.due_date else '--' }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Score:</span>
+                                    <div>{{ assignment.score|format_score }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Max:</span>
+                                    <div>{{ assignment.max_score|format_score }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% if uncategorized_assignments %}
+                <div class="bg-purple-100 p-3 rounded-lg mb-4 border border-purple-200">
+                    <h3 class="font-bold text-purple-800 mb-3">Uncategorized</h3>
+                    {% for assignment in uncategorized_assignments %}
+                        <div class="bg-white p-3 rounded-md mb-2 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-gray-800 text-sm">{{ assignment.name }}</h4>
+                                <span class="text-sm font-bold text-gray-700">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(1) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                    <span class="font-medium">Due:</span>
+                                    <div>{{ assignment.due_date.strftime('%m/%d') if assignment.due_date else '--' }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Score:</span>
+                                    <div>{{ assignment.score|format_score }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Max:</span>
+                                    <div>{{ assignment.max_score|format_score }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% else %}
+            {% for category in grade_categories %}
+                <div class="bg-blue-100 p-3 rounded-lg mb-4 border border-blue-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-blue-800">{{ category.name }}</h3>
+                        <div class="text-right text-sm text-blue-700">
+                            <div class="font-medium">({{ (category.weight * 100)|round(1) }}%)</div>
+                            <div class="text-xs">
+                                Avg: {% if category.id in category_averages %}{{ category_averages[category.id]|round(1) }}%{% else %}--{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% for assignment in assignments_by_category[category.id] %}
+                        <div class="bg-white p-3 rounded-md mb-2 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-gray-800 text-sm">{{ assignment.name }}</h4>
+                                <span class="text-sm font-bold text-gray-700">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(1) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                    <span class="font-medium">Due:</span>
+                                    <div>{{ assignment.due_date.strftime('%m/%d') if assignment.due_date else '--' }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Score:</span>
+                                    <div>{{ assignment.score|format_score }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Max:</span>
+                                    <div>{{ assignment.max_score|format_score }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% if uncategorized_assignments %}
+                <div class="bg-blue-100 p-3 rounded-lg mb-4 border border-blue-200">
+                    <h3 class="font-bold text-blue-800 mb-3">Uncategorized</h3>
+                    {% for assignment in uncategorized_assignments %}
+                        <div class="bg-white p-3 rounded-md mb-2 border border-gray-200">
+                            <div class="flex justify-between items-start mb-2">
+                                <h4 class="font-medium text-gray-800 text-sm">{{ assignment.name }}</h4>
+                                <span class="text-sm font-bold text-gray-700">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(1) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                    <span class="font-medium">Due:</span>
+                                    <div>{{ assignment.due_date.strftime('%m/%d') if assignment.due_date else '--' }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Score:</span>
+                                    <div>{{ assignment.score|format_score }}</div>
+                                </div>
+                                <div>
+                                    <span class="font-medium">Max:</span>
+                                    <div>{{ assignment.max_score|format_score }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="hidden sm:block overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200">
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b text-left">Assignment</th>
+                    <th class="py-2 px-4 border-b text-left">Due Date</th>
+                    <th class="py-2 px-4 border-b text-left">Score</th>
+                    <th class="py-2 px-4 border-b text-left">Max Score</th>
+                    <th class="py-2 px-4 border-b text-left">Percentage</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if course.is_category %}
+                    {% for category in grade_categories %}
+                        <tr class="bg-purple-200">
+                            <td class="py-2 px-4 font-bold" colspan="5">{{ category.name }}</td>
+                        </tr>
+                        {% for assignment in assignments_by_category[category.id] %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if uncategorized_assignments %}
+                        <tr class="bg-purple-200">
+                            <td class="py-2 px-4 font-bold" colspan="5">Uncategorized</td>
+                        </tr>
+                        {% for assignment in uncategorized_assignments %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endif %}
+                {% else %}
+                    {% for category in grade_categories %}
+                        <tr class="bg-blue-200">
+                            <td class="py-2 px-4 font-bold" colspan="4">{{ category.name }} ({{ (category.weight * 100)|round(2) }}%)</td>
+                            <td class="py-2 px-4 font-bold text-right">
+                                {% if category.id in category_averages %}
+                                    {{ category_averages[category.id]|round(2) }}%
+                                {% else %}
+                                    --
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% for assignment in assignments_by_category[category.id] %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if uncategorized_assignments %}
+                        <tr class="bg-blue-200">
+                            <td class="py-2 px-4 font-bold" colspan="5">Uncategorized</td>
+                        </tr>
+                        {% for assignment in uncategorized_assignments %}
+                            <tr>
+                                <td class="py-2 px-4 border-b">{{ assignment.name }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.due_date.strftime('%a - %-m/%-d') if assignment.due_date else '--' }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">{{ assignment.max_score|format_score }}</td>
+                                <td class="py-2 px-4 border-b">
+                                    {% if assignment.score is not none %}
+                                        {{ (assignment.score / assignment.max_score * 100)|round(2) }}%
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endif %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200 text-center">
+        <a href="{{ url_for('main.view_course', course_id=course.id) }}" class="inline-block bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 sm:py-2 rounded-md font-semibold transition duration-300 shadow-md text-base min-h-[44px] flex items-center justify-center">
+            Back to Course
+        </a>
+    </div>
+</div>
+{% endblock %}
